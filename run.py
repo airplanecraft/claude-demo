@@ -147,7 +147,7 @@ def compress_image(image_path: str, max_size_kb: int = 800, quality: int = 85) -
             return f.read()
 
 
-def encode_image(image_path: str, compress: bool = True) -> str:
+def encode_image(image_path: str, compress: bool = True) -> tuple[str, str]:
     """
     将图片编码为base64格式（可选压缩）
 
@@ -156,7 +156,7 @@ def encode_image(image_path: str, compress: bool = True) -> str:
         compress: 是否压缩图片（默认 True）
 
     Returns:
-        base64编码的图片数据
+        (base64编码的图片数据, 媒体类型) 的元组
     """
     try:
         logger.info(f"开始处理图片: {image_path}")
@@ -169,18 +169,24 @@ def encode_image(image_path: str, compress: bool = True) -> str:
         # 压缩图片
         if compress:
             image_data = compress_image(image_path, max_size_kb=800, quality=85)
+            # 压缩后的图片总是 JPEG 格式
+            media_type = "image/jpeg"
             logger.info(f"使用压缩后的图片数据: {len(image_data) / 1024:.2f} KB")
+            logger.info(f"压缩后格式: {media_type}")
         else:
             logger.info("跳过压缩，使用原始图片")
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
+            # 使用原始文件的媒体类型
+            media_type = get_image_media_type(image_path)
+            logger.info(f"原始格式: {media_type}")
 
         # Base64 编码
         encoded = base64.standard_b64encode(image_data).decode("utf-8")
         logger.info(f"Base64 编码完成，长度: {len(encoded)} 字符")
         logger.info(f"Base64 数据大小: {len(encoded) / 1024:.2f} KB")
 
-        return encoded
+        return encoded, media_type
     except Exception as e:
         logger.error(f"编码图片失败: {image_path}, 错误: {str(e)}", exc_info=True)
         raise
@@ -590,11 +596,10 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
     logger.info(f"开始处理图片: {image_path}")
 
     try:
-        # 编码图片
+        # 编码图片（包含压缩）
         logger.info("步骤 1/5: 编码图片...")
-        image_data = encode_image(image_path)
-        media_type = get_image_media_type(image_path)
-        logger.info(f"图片类型: {media_type}")
+        image_data, media_type = encode_image(image_path, compress=True)
+        logger.info(f"最终媒体类型: {media_type}")
 
         # 构建包含模板的完整 prompt
         logger.info("步骤 2/5: 构建 prompt...")
