@@ -147,13 +147,14 @@ def compress_image(image_path: str, max_size_kb: int = 800, quality: int = 85) -
             return f.read()
 
 
-def encode_image(image_path: str, compress: bool = True) -> tuple[str, str]:
+def encode_image(image_path: str, compress: bool = True, max_size_kb: int = 800) -> tuple[str, str]:
     """
-    将图片编码为base64格式（可选压缩）
+    将图片编码为base64格式（智能压缩）
 
     Args:
         image_path: 图片文件路径
         compress: 是否压缩图片（默认 True）
+        max_size_kb: 最大文件大小阈值（KB），默认 800
 
     Returns:
         (base64编码的图片数据, 媒体类型) 的元组
@@ -164,27 +165,37 @@ def encode_image(image_path: str, compress: bool = True) -> tuple[str, str]:
             raise FileNotFoundError(f"图片文件不存在: {image_path}")
 
         original_size = os.path.getsize(image_path)
-        logger.info(f"原始文件大小: {original_size / 1024:.2f} KB")
+        original_size_kb = original_size / 1024
+        logger.info(f"原始文件大小: {original_size_kb:.2f} KB")
 
-        # 压缩图片
-        if compress:
-            image_data = compress_image(image_path, max_size_kb=800, quality=85)
-            # 压缩后的图片总是 JPEG 格式
+        # 智能压缩策略：只在文件超过阈值时才压缩
+        if compress and original_size_kb > max_size_kb:
+            # 文件太大，需要压缩
+            logger.info(f"文件大于 {max_size_kb}KB，进行压缩处理")
+            image_data = compress_image(image_path, max_size_kb=max_size_kb, quality=85)
             media_type = "image/jpeg"
-            logger.info(f"使用压缩后的图片数据: {len(image_data) / 1024:.2f} KB")
+            compressed_size_kb = len(image_data) / 1024
+            logger.info(f"压缩后大小: {compressed_size_kb:.2f} KB")
             logger.info(f"压缩后格式: {media_type}")
+            logger.info(f"实际压缩率: {(1 - len(image_data) / original_size) * 100:.1f}%")
         else:
-            logger.info("跳过压缩，使用原始图片")
+            # 文件已经足够小，直接使用原始文件
+            if compress:
+                logger.info(f"✓ 文件已小于 {max_size_kb}KB ({original_size_kb:.2f}KB)，跳过压缩，保持原始格式")
+            else:
+                logger.info("跳过压缩，使用原始图片")
+
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
             # 使用原始文件的媒体类型
             media_type = get_image_media_type(image_path)
-            logger.info(f"原始格式: {media_type}")
+            logger.info(f"使用原始格式: {media_type}")
 
         # Base64 编码
         encoded = base64.standard_b64encode(image_data).decode("utf-8")
+        final_size_kb = len(image_data) / 1024
+        logger.info(f"最终图片大小: {final_size_kb:.2f} KB")
         logger.info(f"Base64 编码完成，长度: {len(encoded)} 字符")
-        logger.info(f"Base64 数据大小: {len(encoded) / 1024:.2f} KB")
 
         return encoded, media_type
     except Exception as e:
