@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any
 import anthropic
+import httpx
 from dotenv import load_dotenv
 from PIL import Image
 import io
@@ -730,9 +731,24 @@ def process_all_images():
     try:
         logger.info("创建 Anthropic 客户端...")
         logger.info("设置连接超时时间: 120 秒")
+
+        # 使用 httpx.Timeout 明确设置各项超时参数
+        # connect: 连接建立超时 (30秒)
+        # read: 读取响应数据超时 (120秒) - 这是关键参数!
+        # write: 写入请求数据超时 (30秒)
+        # pool: 连接池超时 (None)
+        timeout_config = httpx.Timeout(
+            timeout=120.0,  # 总体超时
+            connect=30.0,   # 连接超时
+            read=120.0,     # 读取超时 - 之前可能默认是60秒
+            write=30.0,     # 写入超时
+            pool=None       # 连接池超时
+        )
+        logger.info(f"超时配置: connect=30s, read=120s, write=30s, total=120s")
+
         client = anthropic.Anthropic(
             api_key=api_key,
-            timeout=120.0  # 设置 120 秒超时
+            timeout=timeout_config  # 使用 httpx.Timeout 对象
         )
         logger.info("Anthropic 客户端创建成功")
     except Exception as e:
