@@ -79,7 +79,7 @@ def get_question_number(image_name: str) -> str:
 
 def load_templates() -> Dict[str, str]:
     """
-    加载 Manim 和 JSXGraph 模板文件
+    加载 Manim 模板文件（移除 JSXGraph 以减少请求大小）
 
     Returns:
         包含模板内容的字典
@@ -96,13 +96,8 @@ def load_templates() -> Dict[str, str]:
     else:
         templates['manim'] = ""
 
-    # 读取 JSXGraph 模板
-    jsx_template_path = templates_dir / "jsxgraph_template.html"
-    if jsx_template_path.exists():
-        with open(jsx_template_path, 'r', encoding='utf-8') as f:
-            templates['jsxgraph'] = f.read()
-    else:
-        templates['jsxgraph'] = ""
+    # 不再加载 JSXGraph 模板以减少请求大小
+    # jsx_template_path = templates_dir / "jsxgraph_template.html"
 
     return templates
 
@@ -213,58 +208,11 @@ class SolutionVideo{question_number}(Scene):
 
 ---
 
-# JSXGraph 代码生成要求（基于模板 templates/jsxgraph_template.html）
-
-## HTML 结构（必须遵循）
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Math Interactive Solution</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
-    <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
-    <style>
-        /* 双栏布局样式 */
-        .left-panel {{ /* 显示原题图片 */ }}
-        .right-panel {{ /* JSXGraph 画板 */ }}
-    </style>
-</head>
-<body>
-    <div class="header">Math Interactive Playground</div>
-    <div class="layout-container">
-        <div class="left-panel">
-            <h3>Original Problem</h3>
-            <img src="image_{question_number}.png" alt="Problem Image" class="problem-img">
-        </div>
-        <div class="right-panel">
-            <div class="instruction">交互演示：请尝试操作下方的图形以探索解题逻辑</div>
-            <div id="jxgbox"></div>
-        </div>
-    </div>
-    <script>
-        var board = JXG.JSXGraph.initBoard('jxgbox', {{
-            boundingbox: [-5, 5, 5, -5],
-            axis: true
-        }});
-
-        // 在此实现交互逻辑
-    </script>
-</body>
-</html>
-```
-
-## 关键要求
-1. **图片路径**: `src="image_{question_number}.png"`
-2. **保持中文**: 所有说明文字保持中文
-3. **交互逻辑**: 基于解题步骤实现
-
----
-
 # 重要提醒
-- 请参考上述模板结构生成**完整可运行**的代码
-- Manim 代码必须包含所有辅助方法（从模板复制）
+- 请参考上述模板结构生成**完整可运行**的 Manim 代码
+- 必须包含所有辅助方法（从模板复制）
 - 严格遵循布局和文件名规范
+- 输出完整的 Python 代码，包含所有必要的 imports、配置和方法
 """
 
     return full_prompt
@@ -347,20 +295,19 @@ def ensure_complete_manim_code(python_code: str, template_code: str) -> str:
         return python_code
 
 
-def parse_response(response: str, template_code: str = "") -> tuple[str, str, str]:
+def parse_response(response: str, template_code: str = "") -> tuple[str, str]:
     """
-    解析Claude响应，分离Markdown解题步骤、Python代码和HTML代码
+    解析Claude响应，分离Markdown解题步骤和Python代码（移除HTML以减少复杂度）
 
     Args:
         response: Claude的完整响应
         template_code: Manim 模板代码（用于补全）
 
     Returns:
-        (markdown_content, python_code, html_code) 元组
+        (markdown_content, python_code) 元组
     """
     # 查找Python代码块
     python_code = ""
-    html_code = ""
 
     # 提取 Python 代码块（优先提取最长的）
     python_pattern = r'```python\n(.*?)```'
@@ -382,37 +329,21 @@ def parse_response(response: str, template_code: str = "") -> tuple[str, str, st
     if python_code and template_code:
         python_code = ensure_complete_manim_code(python_code, template_code)
 
-    # 提取 HTML 代码块（JSXGraph）
-    html_pattern = r'```html\n(.*?)```'
-    html_matches = re.findall(html_pattern, response, re.DOTALL)
-
-    if html_matches:
-        # 选择最长的 HTML 代码块（通常是完整的 JSXGraph 代码）
-        html_code = max(html_matches, key=len)
-
-    # 如果没有找到标准的 HTML 代码块，尝试查找包含 DOCTYPE 的 HTML
-    if not html_code:
-        doctype_pattern = r'(<!DOCTYPE html>.*?</html>)'
-        doctype_match = re.search(doctype_pattern, response, re.DOTALL | re.IGNORECASE)
-        if doctype_match:
-            html_code = doctype_match.group(1)
-
     # Markdown内容就是完整响应
     # （包含代码块，便于查看完整解题过程）
     markdown_content = response
 
-    return markdown_content, python_code, html_code
+    return markdown_content, python_code
 
 
-def save_solution(image_name: str, markdown_content: str, python_code: str, html_code: str) -> Dict[str, Any]:
+def save_solution(image_name: str, markdown_content: str, python_code: str) -> Dict[str, Any]:
     """
-    保存完整的解题方案（Markdown + Python代码 + HTML代码）
+    保存完整的解题方案（Markdown + Python代码）
 
     Args:
         image_name: 图片名称
         markdown_content: Markdown格式的解题步骤
         python_code: Python代码
-        html_code: HTML交互代码
 
     Returns:
         保存结果
@@ -434,12 +365,6 @@ def save_solution(image_name: str, markdown_content: str, python_code: str, html
     py_result = write_solution_file(image_name, python_code, 'py')
     if py_result["success"]:
         results["files_created"].append(py_result["file_path"])
-
-    # 保存HTML文件（如果有）
-    if html_code:
-        html_result = write_solution_file(image_name, html_code, 'html')
-        if html_result["success"]:
-            results["files_created"].append(html_result["file_path"])
 
     results["success"] = md_result["success"] and py_result["success"]
 
@@ -502,9 +427,9 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
         # 提取响应内容
         response_text = message.content[0].text
 
-        # 解析响应，分离Markdown、Python代码和HTML代码
+        # 解析响应，分离Markdown和Python代码（移除HTML以减少复杂度）
         # 传递模板代码以便后处理时补全缺失的辅助方法
-        markdown_content, python_code, html_code = parse_response(
+        markdown_content, python_code = parse_response(
             response_text,
             templates.get('manim', '')
         )
@@ -513,7 +438,6 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
             "success": True,
             "markdown": markdown_content,
             "python": python_code,
-            "html": html_code,
             "full_response": response_text
         }
 
@@ -558,18 +482,13 @@ def process_all_images():
     print(prompt[:200] + "..." if len(prompt) > 200 else prompt)
     print("-" * 60)
 
-    # 加载模板
-    print("\n加载模板文件...")
+    # 加载模板（仅 Manim，移除 JSXGraph）
+    print("\n加载 Manim 模板文件...")
     templates = load_templates()
     if templates.get('manim'):
         print(f"✅ Manim 模板已加载 ({len(templates['manim'])} 字符)")
     else:
         print("⚠️  警告: Manim 模板未找到")
-
-    if templates.get('jsxgraph'):
-        print(f"✅ JSXGraph 模板已加载 ({len(templates['jsxgraph'])} 字符)")
-    else:
-        print("⚠️  警告: JSXGraph 模板未找到")
 
     # 逐张处理图片
     images_dir = Path(__file__).parent / "input" / "images"
@@ -584,12 +503,11 @@ def process_all_images():
         result = solve_math_problem(client, str(image_path), prompt, templates)
 
         if result["success"]:
-            # 保存解题结果（包括HTML）
+            # 保存解题结果（仅 Markdown 和 Python）
             save_result = save_solution(
                 image_name,
                 result["markdown"],
-                result["python"],
-                result.get("html", "")
+                result["python"]
             )
 
             if save_result["success"]:
