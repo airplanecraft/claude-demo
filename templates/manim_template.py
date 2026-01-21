@@ -118,36 +118,90 @@ AUDIO_BUFFER      = 0.3        # 音频播放后的额外等待时间，防止�
 # 🛠️ 音频工具 (Helpers)
 # ==============================================================================
 async def _run_edge_tts(text, filename):
+    """使用 edge_tts 生成语音"""
     communicate = edge_tts.Communicate(text, EDGE_VOICE, rate=TTS_RATE)
     await communicate.save(filename)
 
 def generate_audio_file(text, filename_mp3):
+    """
+    生成音频文件（优先使用 edge_tts，失败则使用 Mac say 命令）
+
+    Args:
+        text: 要转换的文本
+        filename_mp3: 输出文件名
+
+    Returns:
+        音频文件路径，失败返回 None
+    """
     clean_text = text.replace("\n", " ").strip()
     abs_mp3 = os.path.abspath(filename_mp3)
     abs_m4a = abs_mp3.replace(".mp3", ".m4a")
+
+    # 尝试使用 edge_tts
     try:
+        print(f"  [TTS] 尝试使用 edge_tts 生成音频: {os.path.basename(filename_mp3)}")
         asyncio.run(_run_edge_tts(clean_text, abs_mp3))
-        if os.path.exists(abs_mp3) and os.path.getsize(abs_mp3) > 1000: return abs_mp3
-    except: pass
+        if os.path.exists(abs_mp3) and os.path.getsize(abs_mp3) > 1000:
+            print(f"  [TTS] ✓ edge_tts 生成成功: {os.path.getsize(abs_mp3)} bytes")
+            return abs_mp3
+        else:
+            print(f"  [TTS] ✗ edge_tts 生成的文件无效")
+    except Exception as e:
+        print(f"  [TTS] ✗ edge_tts 失败: {str(e)}")
+
+    # 回退到 Mac say 命令
     try:
+        print(f"  [TTS] 尝试使用 Mac say 命令生成音频")
         os.system(f'say -v "{MAC_VOICE}" -o "{abs_m4a}" "{clean_text}"')
-        if os.path.exists(abs_m4a) and os.path.getsize(abs_m4a) > 0: return abs_m4a
-    except: pass
+        if os.path.exists(abs_m4a) and os.path.getsize(abs_m4a) > 0:
+            print(f"  [TTS] ✓ Mac say 生成成功: {os.path.getsize(abs_m4a)} bytes")
+            return abs_m4a
+        else:
+            print(f"  [TTS] ✗ Mac say 生成的文件无效")
+    except Exception as e:
+        print(f"  [TTS] ✗ Mac say 失败: {str(e)}")
+
+    print(f"  [TTS] ✗ 所有 TTS 方法均失败")
     return None
 
 def prepare_all_audio(problem_data, steps_data):
-    if not os.path.exists(TTS_CACHE_DIR): os.makedirs(TTS_CACHE_DIR)
+    """
+    预生成所有音频文件（读题 + 所有步骤）
+
+    Args:
+        problem_data: 问题数据字典（包含 speech 字段）
+        steps_data: 步骤数据列表（每个包含 speech 字段）
+    """
+    print(f"\n[音频生成] 开始生成所有音频文件...")
+    print(f"[音频生成] 缓存目录: {TTS_CACHE_DIR}")
+
+    if not os.path.exists(TTS_CACHE_DIR):
+        os.makedirs(TTS_CACHE_DIR)
+        print(f"[音频生成] 已创建缓存目录")
+
+    # 生成读题音频
+    print(f"[音频生成] 生成读题音频...")
     q_file = os.path.join(TTS_CACHE_DIR, "question.mp3")
     problem_data["audio_path"] = generate_audio_file(problem_data["speech"], q_file)
+
+    # 生成所有步骤的音频
+    print(f"[音频生成] 生成 {len(steps_data)} 个步骤的音频...")
     for i, step in enumerate(steps_data):
+        print(f"[音频生成] 步骤 {i+1}/{len(steps_data)}")
         s_file = os.path.join(TTS_CACHE_DIR, f"step_{i}.mp3")
         step["audio_path"] = generate_audio_file(step["speech"], s_file)
+
+    print(f"[音频生成] ✓ 所有音频生成完成\n")
 
 # ==============================================================================
 # 🎬 核心逻辑 (Scene Logic)
 # ==============================================================================
 class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo6
     def construct(self):
+        print("\n" + "=" * 60)
+        print("开始渲染 Manim 视频")
+        print("=" * 60)
+
         # AI: 请根据用户输入的题号 N，自动生成完整路径
         # 例如：self.problem_image_name = os.path.join(PROBLEM_IMAGE_DIR, "image_6.png")
         self.problem_image_name = os.path.join(PROBLEM_IMAGE_DIR, "image_REPLACE_WITH_NUMBER.png")
@@ -162,13 +216,32 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         # problem_data = {"speech": "..."}
         # steps_data = [{"text": "...", "math": "...", "speech": "..."}, ...]
 
+        print(f"\n[视频] 问题图片: {self.problem_image_name}")
+        if not os.path.exists(self.problem_image_name):
+            print(f"[视频] ⚠ 警告: 问题图片不存在: {self.problem_image_name}")
+        else:
+            print(f"[视频] ✓ 问题图片找到")
+
         prepare_all_audio(problem_data, steps_data)
 
+        print(f"\n[视频] 阶段 1/5: 显示封面...")
         cover_objects = self.show_cover_phase()
+
+        print(f"[视频] 阶段 2/5: 过渡到解题界面...")
         video_img_obj = self.transition_to_solution_phase(cover_objects)
+
+        print(f"[视频] 阶段 3/5: 读题...")
         self.safe_read_problem(problem_data, video_img_obj)
+
+        print(f"[视频] 阶段 4/5: 播放解题动画...")
         self.play_visual_reasoning(steps_data)
+
+        print(f"[视频] 阶段 5/5: 显示最终答案...")
         self.show_final_answer(final_answer_text)
+
+        print(f"\n{'=' * 60}")
+        print(f"视频渲染完成")
+        print(f"{'=' * 60}\n")
 
     # --- 🎨 AI 需编写的动画部分 ---
     def play_visual_reasoning(self, steps):

@@ -8,6 +8,7 @@ import os
 import sys
 import base64
 import re
+import logging
 from pathlib import Path
 from typing import Dict, Any
 import anthropic
@@ -21,8 +22,20 @@ from tools import (
     write_solution_file
 )
 
+# 配置日志
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('run.log', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger(__name__)
+
 # 加载环境变量
 load_dotenv()
+logger.info("环境变量已加载")
 
 
 def encode_image(image_path: str) -> str:
@@ -35,8 +48,21 @@ def encode_image(image_path: str) -> str:
     Returns:
         base64编码的图片数据
     """
-    with open(image_path, "rb") as image_file:
-        return base64.standard_b64encode(image_file.read()).decode("utf-8")
+    try:
+        logger.info(f"开始编码图片: {image_path}")
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"图片文件不存在: {image_path}")
+
+        file_size = os.path.getsize(image_path)
+        logger.info(f"图片大小: {file_size / 1024:.2f} KB")
+
+        with open(image_path, "rb") as image_file:
+            encoded = base64.standard_b64encode(image_file.read()).decode("utf-8")
+            logger.info(f"图片编码完成，Base64 长度: {len(encoded)}")
+            return encoded
+    except Exception as e:
+        logger.error(f"编码图片失败: {image_path}, 错误: {str(e)}")
+        raise
 
 
 def get_image_media_type(image_path: str) -> str:
@@ -70,11 +96,18 @@ def get_question_number(image_name: str) -> str:
     Returns:
         题号字符串（如 "1"）
     """
-    # 尝试从文件名中提取数字
-    match = re.search(r'(\d+)', Path(image_name).stem)
-    if match:
-        return match.group(1)
-    return "1"  # 默认题号
+    try:
+        # 尝试从文件名中提取数字
+        match = re.search(r'(\d+)', Path(image_name).stem)
+        if match:
+            question_num = match.group(1)
+            logger.info(f"从文件名 '{image_name}' 提取题号: {question_num}")
+            return question_num
+        logger.warning(f"未能从 '{image_name}' 提取题号，使用默认值 '1'")
+        return "1"  # 默认题号
+    except Exception as e:
+        logger.error(f"提取题号失败: {str(e)}")
+        return "1"
 
 
 def load_templates() -> Dict[str, str]:
@@ -84,22 +117,32 @@ def load_templates() -> Dict[str, str]:
     Returns:
         包含模板内容的字典
     """
-    templates_dir = Path(__file__).parent / "templates"
+    try:
+        logger.info("开始加载模板文件...")
+        templates_dir = Path(__file__).parent / "templates"
+        logger.info(f"模板目录: {templates_dir}")
 
-    templates = {}
+        templates = {}
 
-    # 读取 Manim 模板
-    manim_template_path = templates_dir / "manim_template.py"
-    if manim_template_path.exists():
-        with open(manim_template_path, 'r', encoding='utf-8') as f:
-            templates['manim'] = f.read()
-    else:
-        templates['manim'] = ""
+        # 读取 Manim 模板
+        manim_template_path = templates_dir / "manim_template.py"
+        if manim_template_path.exists():
+            logger.info(f"读取 Manim 模板: {manim_template_path}")
+            with open(manim_template_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+                templates['manim'] = content
+                logger.info(f"Manim 模板加载成功，长度: {len(content)} 字符")
+        else:
+            logger.warning(f"Manim 模板文件不存在: {manim_template_path}")
+            templates['manim'] = ""
 
-    # 不再加载 JSXGraph 模板以减少请求大小
-    # jsx_template_path = templates_dir / "jsxgraph_template.html"
+        # 不再加载 JSXGraph 模板以减少请求大小
+        logger.info("已跳过 JSXGraph 模板以减少请求大小")
 
-    return templates
+        return templates
+    except Exception as e:
+        logger.error(f"加载模板失败: {str(e)}", exc_info=True)
+        return {'manim': ''}
 
 
 def build_full_prompt(base_prompt: str, image_name: str, templates: Dict[str, str]) -> str:
@@ -423,45 +466,64 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
     image_name = Path(image_path).name
     print(f"\n处理图片: {image_name}")
     print("=" * 60)
+    logger.info(f"开始处理图片: {image_path}")
 
     try:
         # 编码图片
+        logger.info("步骤 1/5: 编码图片...")
         image_data = encode_image(image_path)
         media_type = get_image_media_type(image_path)
+        logger.info(f"图片类型: {media_type}")
 
         # 构建包含模板的完整 prompt
+        logger.info("步骤 2/5: 构建 prompt...")
         full_prompt = build_full_prompt(prompt, image_name, templates)
+        prompt_length = len(full_prompt)
+        logger.info(f"Prompt 长度: {prompt_length} 字符")
 
-        print(f"题号: {get_question_number(image_name)}")
+        question_num = get_question_number(image_name)
+        print(f"题号: {question_num}")
 
         # 调用Claude API
         print("正在调用 Claude 4 Sonnet API（轻量级 prompt，避免 Connection error）...")
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=16000,  # 增加 token 限制以容纳更长的响应
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_data,
+        logger.info("步骤 3/5: 调用 Claude API...")
+        logger.info(f"模型: claude-sonnet-4-20250514, max_tokens: 16000")
+
+        try:
+            message = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=16000,  # 增加 token 限制以容纳更长的响应
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": media_type,
+                                    "data": image_data,
+                                },
                             },
-                        },
-                        {
-                            "type": "text",
-                            "text": full_prompt
-                        }
-                    ],
-                }
-            ],
-        )
+                            {
+                                "type": "text",
+                                "text": full_prompt
+                            }
+                        ],
+                    }
+                ],
+            )
+            logger.info("API 调用成功")
+            logger.info(f"使用的 tokens: input={message.usage.input_tokens}, output={message.usage.output_tokens}")
+        except Exception as api_error:
+            logger.error(f"API 调用失败: {str(api_error)}", exc_info=True)
+            raise
 
         # 提取响应内容
+        logger.info("步骤 4/5: 解析响应...")
         response_text = message.content[0].text
+        response_length = len(response_text)
+        logger.info(f"响应长度: {response_length} 字符")
 
         # 解析响应，分离Markdown和Python代码（移除HTML以减少复杂度）
         # 传递模板代码以便后处理时补全缺失的辅助方法
@@ -469,6 +531,25 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
             response_text,
             templates.get('manim', '')
         )
+
+        logger.info(f"Markdown 内容长度: {len(markdown_content)} 字符")
+        logger.info(f"Python 代码长度: {len(python_code)} 字符")
+
+        # 验证 Python 代码
+        if python_code:
+            logger.info("验证 Python 代码完整性...")
+            if 'class SolutionVideo' in python_code:
+                logger.info("✓ 找到 SolutionVideo 类")
+            else:
+                logger.warning("⚠ 未找到 SolutionVideo 类定义")
+
+            if 'def construct(' in python_code:
+                logger.info("✓ 找到 construct 方法")
+            else:
+                logger.warning("⚠ 未找到 construct 方法")
+
+        logger.info("步骤 5/5: 完成")
+        logger.info(f"图片 {image_name} 处理成功")
 
         return {
             "success": True,
@@ -478,10 +559,14 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
         }
 
     except Exception as e:
-        print(f"❌ 错误: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"处理图片失败: {image_name}", exc_info=True)
+        logger.error(f"错误类型: {type(e).__name__}")
+        logger.error(f"错误信息: {error_msg}")
+        print(f"❌ 错误: {error_msg}")
         return {
             "success": False,
-            "error": str(e)
+            "error": error_msg
         }
 
 
@@ -489,34 +574,58 @@ def process_all_images():
     """
     处理所有题目图片
     """
+    logger.info("=" * 60)
+    logger.info("开始处理所有图片")
+    logger.info("=" * 60)
+
     # 检查API密钥
+    logger.info("检查 API 密钥...")
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
+        logger.error("未找到 ANTHROPIC_API_KEY 环境变量")
         print("❌ 错误: 未找到 ANTHROPIC_API_KEY 环境变量")
         print("请在项目根目录创建 .env 文件并添加:")
         print("ANTHROPIC_API_KEY=your_api_key_here")
         return
+    logger.info("API 密钥已找到")
 
     # 创建Anthropic客户端
-    client = anthropic.Anthropic(api_key=api_key)
+    try:
+        logger.info("创建 Anthropic 客户端...")
+        client = anthropic.Anthropic(api_key=api_key)
+        logger.info("Anthropic 客户端创建成功")
+    except Exception as e:
+        logger.error(f"创建 Anthropic 客户端失败: {str(e)}", exc_info=True)
+        print(f"❌ 错误: 无法创建 API 客户端: {str(e)}")
+        return
 
     # 获取图片列表
+    logger.info("获取图片列表...")
     images = get_image_list()
 
     if not images:
+        logger.warning("未找到任何图片文件")
         print("❌ 未找到任何图片文件")
         print(f"请将题目图片放入: {Path(__file__).parent / 'input' / 'images'}")
         return
 
+    logger.info(f"找到 {len(images)} 张题目图片: {', '.join(images)}")
     print(f"\n找到 {len(images)} 张题目图片")
     print("=" * 60)
 
     # 读取提示词
-    prompt = read_prompt()
-    print(f"\n使用提示词:")
-    print("-" * 60)
-    print(prompt[:200] + "..." if len(prompt) > 200 else prompt)
-    print("-" * 60)
+    logger.info("读取提示词...")
+    try:
+        prompt = read_prompt()
+        logger.info(f"提示词长度: {len(prompt)} 字符")
+        print(f"\n使用提示词:")
+        print("-" * 60)
+        print(prompt[:200] + "..." if len(prompt) > 200 else prompt)
+        print("-" * 60)
+    except Exception as e:
+        logger.error(f"读取提示词失败: {str(e)}", exc_info=True)
+        print(f"❌ 错误: 无法读取提示词: {str(e)}")
+        return
 
     # 加载模板（仅 Manim，移除 JSXGraph）
     print("\n加载 Manim 模板文件...")
@@ -531,40 +640,62 @@ def process_all_images():
     successful = 0
     failed = 0
 
+    logger.info(f"开始逐张处理 {len(images)} 张图片...")
     for i, image_name in enumerate(images, 1):
         print(f"\n\n进度: {i}/{len(images)}")
+        logger.info(f"{'=' * 60}")
+        logger.info(f"处理第 {i}/{len(images)} 张图片: {image_name}")
+        logger.info(f"{'=' * 60}")
         image_path = images_dir / image_name
 
-        # 调用Claude解题（包含模板）
-        result = solve_math_problem(client, str(image_path), prompt, templates)
+        try:
+            # 调用Claude解题（包含模板）
+            result = solve_math_problem(client, str(image_path), prompt, templates)
 
-        if result["success"]:
-            # 保存解题结果（仅 Markdown 和 Python）
-            save_result = save_solution(
-                image_name,
-                result["markdown"],
-                result["python"]
-            )
+            if result["success"]:
+                logger.info("解题成功，准备保存结果...")
+                # 保存解题结果（仅 Markdown 和 Python）
+                save_result = save_solution(
+                    image_name,
+                    result["markdown"],
+                    result["python"]
+                )
 
-            if save_result["success"]:
-                print(f"✅ 成功保存解题结果:")
-                for file_path in save_result["files_created"]:
-                    print(f"   - {file_path}")
-                successful += 1
+                if save_result["success"]:
+                    logger.info(f"✅ 解题结果保存成功")
+                    for file_path in save_result["files_created"]:
+                        logger.info(f"   创建文件: {file_path}")
+                    print(f"✅ 成功保存解题结果:")
+                    for file_path in save_result["files_created"]:
+                        print(f"   - {file_path}")
+                    successful += 1
+                else:
+                    logger.error(f"保存解题结果失败")
+                    print(f"❌ 保存失败")
+                    failed += 1
             else:
-                print(f"❌ 保存失败")
+                error_msg = result.get('error', '未知错误')
+                logger.error(f"解题失败: {error_msg}")
+                print(f"❌ 解题失败: {error_msg}")
                 failed += 1
-        else:
-            print(f"❌ 解题失败: {result.get('error', '未知错误')}")
+        except Exception as e:
+            logger.error(f"处理图片时发生异常: {str(e)}", exc_info=True)
+            print(f"❌ 处理失败: {str(e)}")
             failed += 1
 
     # 打印总结
+    logger.info("=" * 60)
+    logger.info("所有图片处理完成")
+    logger.info(f"成功: {successful}, 失败: {failed}, 总计: {len(images)}")
+    logger.info("=" * 60)
+
     print("\n" + "=" * 60)
     print(f"处理完成!")
     print(f"✅ 成功: {successful}")
     print(f"❌ 失败: {failed}")
     print(f"📊 总计: {len(images)}")
     print("=" * 60)
+    print(f"\n详细日志已保存到: run.log")
 
 
 def main():
@@ -574,14 +705,19 @@ def main():
     print("=" * 60)
     print("数学解题系统 - 智能模板代码生成")
     print("=" * 60)
+    logger.info("程序启动")
 
     try:
         process_all_images()
+        logger.info("程序正常结束")
     except KeyboardInterrupt:
+        logger.warning("用户中断程序")
         print("\n\n⚠️  用户中断")
         sys.exit(0)
     except Exception as e:
+        logger.error(f"程序异常退出: {str(e)}", exc_info=True)
         print(f"\n❌ 发生错误: {str(e)}")
+        print(f"详细错误信息已保存到: run.log")
         sys.exit(1)
 
 
