@@ -19,7 +19,7 @@
 ```bash
 # 克隆仓库
 git clone https://github.com/airplanecraft/claude-demo.git
-cd claude-demo/exam_mcp_project
+cd claude-demo
 
 # 安装依赖
 pip install -r requirements.txt
@@ -36,7 +36,7 @@ cp .env.example .env
 将数学题目图片放入 `input/images/` 目录：
 
 ```bash
-exam_mcp_project/input/images/
+input/images/
 ├── image-1.png
 ├── image-2.png
 └── image-n.png
@@ -45,7 +45,7 @@ exam_mcp_project/input/images/
 ### 运行解题程序
 
 ```bash
-cd exam_mcp_project
+cd claude-demo
 python run.py
 ```
 
@@ -68,7 +68,7 @@ python server.py
 每道题目的解答会保存在独立的目录中：
 
 ```
-exam_mcp_project/output/
+output/
 ├── image-1/
 │   ├── image-1.md    # 中文解题步骤
 │   └── image-1.py    # Python代码（包含解题代码和Manim动画）
@@ -94,7 +94,7 @@ exam_mcp_project/output/
 
 ### 环境变量配置
 
-在 `exam_mcp_project/` 目录下创建 `.env` 文件：
+在项目根目录创建 `.env` 文件：
 
 ```bash
 # Anthropic API Key
