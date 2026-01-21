@@ -24,10 +24,18 @@
 
 核心要求：
 1. 高清画质：保留 1080p @ 60fps 配置
-2. 布局防重叠：动画必须位于右上角 (POS_ANIM_CENTER)，不得遮挡下方文字
-3. 文件名：根据题号生成 image_{题号}.png
+2. 布局防重叠：
+   - 原题图片固定在左侧（X = -3.5）
+   - 动画必须位于右上角 (POS_ANIM_CENTER = [3.5, 2.0, 0])
+   - 解题步骤在右下方（POS_TEXT_BASE = [3.5, -3.0, 0]）
+   - 动画不得遮挡文字，不得覆盖原题
+3. 文件名：根据题号生成 image_{题号}.png（路径：input/images/image_{题号}.png）
 4. 类名：SolutionVideo{题号}
-5. 包含所有必要的辅助方法
+5. 步骤显示：每个步骤调用 play_rolling_step_text(step)，自动三个一组滚动
+6. 声音处理：音频会自动连贯播放，无需手动处理重叠
+7. 资源路径：
+   - logo.png 和 cover.png 在 assets/ 目录
+   - 原题图片在 input/images/ 目录
 
 详细指导见：prompts/stage3_manim.txt
 

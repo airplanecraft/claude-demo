@@ -4,6 +4,30 @@ import edge_tts
 from manim import *
 
 # ==============================================================================
+# 📋 视频布局说明 (Layout Guide for AI)
+# ==============================================================================
+#
+# 【视频结构】
+# 1. 封面阶段（3秒）：
+#    - 显示 cover.png 作为全屏背景
+#    - 中央显示原题图片 + 题号标签（Q）
+#    - 底部显示比赛信息文字
+#
+# 2. 解题阶段：
+#    - 左侧：原题图片固定显示（占据左半屏幕）
+#    - 右侧上方：动画演示区域（POS_ANIM_CENTER）
+#    - 右侧下方：解题步骤文字（三个一组滚动显示）
+#    - 左上角：logo.png 固定显示
+#    - 底部：语音字幕（跟随当前步骤）
+#
+# 【关键要求】
+# - 原题始终占据左侧屏幕，不被遮挡
+# - 演示动画必须在右上方区域，不得覆盖文字步骤
+# - 解题步骤三个一组滚动显示，不重叠
+# - 声音连贯播放，每段音频播放完毕后再进行下一步
+# - 所有文字使用中文，支持 LaTeX 数学公式
+#
+# ==============================================================================
 # 🎛️ 全局配置 (Configuration)
 # ==============================================================================
 config.disable_caching = True
@@ -73,7 +97,7 @@ POS_TEXT_BASE        = [3.5, -3.0, 0]  # 文字区域基准点 (右下)
 
 # 文字行高与数量限制
 TEXT_LINE_HEIGHT     = 0.8             # 每一行文字的高度间距
-MAX_TEXT_LINES       = 4               # 右下角最多保留几行文字
+MAX_TEXT_LINES       = 3               # 右下角最多保留几行文字（三个一组滚动显示）
 
 # 封面布局
 COVER_IMG_EXACT_WIDTH    = 4.0
@@ -87,7 +111,8 @@ QUESTION_LABEL_BUFF      = 0.5
 EDGE_VOICE        = "zh-CN-XiaoxiaoNeural"
 MAC_VOICE         = "Tingting"
 TTS_RATE          = "+10%"
-SECONDS_PER_CHAR  = 0.35       # 估算阅读速度
+SECONDS_PER_CHAR  = 0.15       # 估算阅读速度（中文字符）
+AUDIO_BUFFER      = 0.3        # 音频播放后的额外等待时间，防止重叠
 
 # ==============================================================================
 # 🛠️ 音频工具 (Helpers)
@@ -147,10 +172,45 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
 
     # --- 🎨 AI 需编写的动画部分 ---
     def play_visual_reasoning(self, steps):
-        # [CRITICAL LAYOUT RULE]
-        # 所有动画对象必须位于右上角区域。
-        # 请务必使用 obj.move_to(POS_ANIM_CENTER) 来定位主物体。
-        # 确保物体底部不要低于 Y = 0，以免遮挡下方的 steps 文字。
+        """
+        [CRITICAL LAYOUT RULE - AI 必须遵守的布局规则]
+
+        1. 动画位置：所有动画对象必须位于右上角区域
+           - 主对象使用 obj.move_to(POS_ANIM_CENTER) 定位
+           - POS_ANIM_CENTER = [3.5, 2.0, 0]（右侧上方区域）
+
+        2. 避免遮挡：
+           - 确保动画底部不要低于 Y = 0
+           - 不要遮挡下方的解题步骤文字（位于 Y = -3.0 附近）
+           - 不要遮挡左侧的原题图片（位于 X = -3.5 附近）
+
+        3. 动画尺寸：
+           - 建议动画对象宽度 ≤ 4
+           - 建议动画对象高度 ≤ 3
+           - 使用 .scale() 调整大小以适应区域
+
+        4. 解题步骤显示：
+           - 每个步骤调用 self.play_rolling_step_text(step)
+           - 步骤文字会自动三个一组滚动显示
+           - 声音会自动连贯播放，不会重叠
+
+        示例代码：
+            for i, step in enumerate(steps):
+                # 1. 先显示文字和语音
+                self.play_rolling_step_text(step)
+
+                # 2. 再播放对应的动画（在右上方区域）
+                if i == 0:
+                    # 创建几何对象
+                    triangle = Triangle().scale(1.5).move_to(POS_ANIM_CENTER)
+                    self.play(Create(triangle))
+                elif i == 1:
+                    # 变换动画
+                    self.play(triangle.animate.rotate(PI/3))
+                # ... 更多步骤
+        """
+        # AI: 请在此处编写具体的动画逻辑
+        # 遍历 steps 列表，为每个步骤创建对应的动画
         pass
 
     # --- 🛠️ 滚动文字与字幕 (已支持中文公式) ---
@@ -188,10 +248,21 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         if len(self.text_lines_group) > MAX_TEXT_LINES:
             self.text_lines_group.remove(self.text_lines_group[0])
 
+        # 计算音频播放时长（确保声音连贯不重叠）
+        audio_duration = len(step["speech"]) * SECONDS_PER_CHAR + AUDIO_BUFFER
+
+        # 播放音频并等待完整播放完毕
         try:
-            if audio_path and os.path.exists(audio_path): self.add_sound(audio_path)
-        except: pass
-        self.wait(max(1.0, len(step["speech"]) * SECONDS_PER_CHAR))
+            if audio_path and os.path.exists(audio_path):
+                self.add_sound(audio_path)
+                # 等待音频播放完毕，最少2秒
+                self.wait(max(2.0, audio_duration))
+            else:
+                # 如果没有音频，等待较短时间
+                self.wait(max(1.5, audio_duration * 0.6))
+        except:
+            self.wait(max(1.5, audio_duration * 0.6))
+
         self.play(FadeOut(sub_group), run_time=0.3)
 
     # --- 辅助方法 (无需修改) ---
@@ -242,10 +313,20 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         sub_group = VGroup(sub_bg, sub_text).to_edge(DOWN, buff=0.2)
         highlight = SurroundingRectangle(video_img_obj, color=COLOR_HIGHLIGHT, buff=0.1, stroke_width=4)
         self.play(FadeIn(sub_group), Create(highlight), run_time=0.5)
+
+        # 计算音频播放时长（确保声音连贯不重叠）
+        audio_duration = len(text) * SECONDS_PER_CHAR + AUDIO_BUFFER
+
         try:
-            if audio_path and os.path.exists(audio_path): self.add_sound(audio_path)
-        except: pass
-        self.wait(len(text) * SECONDS_PER_CHAR + 0.5)
+            if audio_path and os.path.exists(audio_path):
+                self.add_sound(audio_path)
+                # 等待音频播放完毕，最少2秒
+                self.wait(max(2.0, audio_duration))
+            else:
+                self.wait(max(1.5, audio_duration * 0.6))
+        except:
+            self.wait(max(1.5, audio_duration * 0.6))
+
         self.play(FadeOut(sub_group), FadeOut(highlight), run_time=0.5)
 
     def show_final_answer(self, answer_text):
