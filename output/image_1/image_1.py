@@ -15,37 +15,39 @@ my_tex_template.output_format = ".xdv"
 my_tex_template.add_to_preamble(r"\usepackage[fontset=mac]{ctex}")
 config.tex_template = my_tex_template
 
-# 颜色和常量定义
+# 颜色和布局常量
 COLOR_BG = "#415049"
 COLOR_HIGHLIGHT = "#FFD700"
-COLOR_PRIME = "#00CED1"
-COLOR_CALCULATION = "#FF6B6B"
-COLOR_SUCCESS = "#98FB98"
-COLOR_FAIL = "#FFA07A"
+COLOR_PRIME = "#FF6B6B"
+COLOR_CALCULATION = "#4ECDC4"
+COLOR_SUCCESS = "#95E1D3"
 FONT_NAME = "Heiti SC"
-POS_ANIM_CENTER = [3.5, 2.0, 0]
-POS_TEXT_BASE = [3.5, -3.0, 0]
+POS_ANIM_CENTER = [3.5, 2.0, 0]  # 动画区域中心（右上）
+POS_TEXT_BASE = [3.5, -3.0, 0]   # 文字区域（右下）
 
-async def generate_audio_file(text, filename, voice="zh-CN-XiaoxiaoNeural", rate="+0%", pitch="+0Hz"):
-    try:
+def generate_audio_file(text, filename, voice="zh-CN-XiaoxiaoNeural"):
+    async def amain():
         communicate = edge_tts.Communicate(text, voice)
         await communicate.save(filename)
+    
+    try:
+        asyncio.run(amain())
         return True
     except Exception as e:
-        print(f"TTS生成失败: {e}")
+        print(f"TTS failed: {e}")
+        os.system(f'say "{text}"')
         return False
 
 def prepare_all_audio(problem_data, steps_data):
-    async def main():
-        tasks = []
-        tasks.append(generate_audio_file(problem_data["speech"], "problem_audio.mp3"))
-        
-        for i, step in enumerate(steps_data):
-            tasks.append(generate_audio_file(step["speech"], f"step_{i}_audio.mp3"))
-        
-        await asyncio.gather(*tasks)
+    audio_dir = "audio"
+    os.makedirs(audio_dir, exist_ok=True)
     
-    asyncio.run(main())
+    # 生成题目音频
+    generate_audio_file(problem_data["speech"], f"{audio_dir}/problem.wav")
+    
+    # 生成步骤音频
+    for i, step in enumerate(steps_data):
+        generate_audio_file(step["speech"], f"{audio_dir}/step_{i}.wav")
 
 class SolutionVideo1(Scene):
     def construct(self):
@@ -54,39 +56,44 @@ class SolutionVideo1(Scene):
 
         # 定义数据
         problem_data = {
-            "speech": "Tim计算五个不同质数的平均值，他的答案是一个整数。那么他可能得到的最小整数是多少？"
+            "speech": "Tim计算五个不同质数的平均值，答案是整数。求最小可能的整数。"
         }
         
         steps_data = [
             {
-                "text": "步骤1：列出最小的质数序列",
-                "math": "2, 3, 5, 7, 11, 13, 17, 19, ...",
-                "speech": "首先列出最小的几个质数：2, 3, 5, 7, 11, 13, 17, 19等"
+                "text": "设五个质数为p1,p2,p3,p4,p5，平均值为k",
+                "math": r"p_1 + p_2 + p_3 + p_4 + p_5 = 5k",
+                "speech": "设五个质数的平均值为k，则五个质数的和等于5k"
             },
             {
-                "text": "步骤2：理解平均值为整数的条件",
-                "math": "平均值 = \\frac{\\sum p_i}{5} \\in \\mathbb{Z}",
-                "speech": "平均值为整数意味着五个质数的和必须是5的倍数"
+                "text": "分析质数性质：除2外都是奇数",
+                "math": r"\text{质数: } 2, 3, 5, 7, 11, 13, ...",
+                "speech": "除了2以外，所有质数都是奇数"
             },
             {
-                "text": "步骤3：尝试最小的五个质数",
-                "math": "2 + 3 + 5 + 7 + 11 = 28",
-                "speech": "尝试最小的五个质数：2加3加5加7加11等于28"
+                "text": "必须包含质数2才能使5k为整数",
+                "math": r"2 + 4\text{个奇质数} = \text{偶数}",
+                "speech": "为了让总和能被5整除且为整数，必须包含质数2"
             },
             {
-                "text": "步骤4：检验能否整除5",
-                "math": "28 \\div 5 = 5.6 \\text{（不是整数）}",
-                "speech": "28除以5等于5.6，不是整数，所以不符合条件"
+                "text": "寻找最小的4个奇质数: 3,5,7,11",
+                "math": r"2 + 3 + 5 + 7 + 11 = 28",
+                "speech": "选择最小的4个奇质数，计算总和为28"
             },
             {
-                "text": "步骤5：寻找下一个可能的组合",
-                "math": "2 + 3 + 5 + 7 + 13 = 30",
-                "speech": "将11替换为13，得到：2加3加5加7加13等于30"
+                "text": "28除以5不是整数，需要调整",
+                "math": r"k = \frac{28}{5} = 5.6",
+                "speech": "28除以5等于5点6，不是整数"
             },
             {
-                "text": "步骤6：验证新组合",
-                "math": "30 \\div 5 = 6 \\text{（整数）}",
-                "speech": "30除以5等于6，是整数，符合条件"
+                "text": "尝试用13替换11",
+                "math": r"2 + 3 + 5 + 7 + 13 = 30",
+                "speech": "将11换成13，新的总和为30"
+            },
+            {
+                "text": "验证结果",
+                "math": r"k = \frac{30}{5} = 6",
+                "speech": "30除以5等于6，这是整数"
             }
         ]
         
@@ -102,188 +109,160 @@ class SolutionVideo1(Scene):
         self.show_final_answer(final_answer_text)
 
     def play_visual_reasoning(self, steps):
-        # 创建动画区域标题
-        title = Text("解题过程", font_size=36, color=COLOR_HIGHLIGHT).move_to(POS_ANIM_CENTER + UP * 2.5)
-        self.play(Write(title))
+        # 创建动画区域
+        anim_group = VGroup()
         
-        for i, step in enumerate(steps):
-            self.play_rolling_step_text(step)
-            
-            if i == 0:  # 显示质数序列
-                primes = [2, 3, 5, 7, 11, 13, 17, 19]
-                prime_group = VGroup()
-                for j, p in enumerate(primes):
-                    prime_text = Text(str(p), font_size=24, color=COLOR_PRIME)
-                    prime_text.move_to(POS_ANIM_CENTER + LEFT * 3 + RIGHT * j * 0.8)
-                    prime_group.add(prime_text)
-                
-                self.play(LaggedStart(*[Write(p) for p in prime_group], lag_ratio=0.3))
-                self.wait(1)
-                
-            elif i == 2:  # 第一次尝试计算
-                # 高亮前五个质数
-                first_five = VGroup()
-                calc_parts = []
-                for j in range(5):
-                    num_text = Text(str([2,3,5,7,11][j]), font_size=28, color=COLOR_HIGHLIGHT)
-                    num_text.move_to(POS_ANIM_CENTER + LEFT * 2 + RIGHT * j * 0.8)
-                    first_five.add(num_text)
-                    calc_parts.append(str([2,3,5,7,11][j]))
-                
-                self.play(Write(first_five))
-                
-                # 显示加法过程
-                plus_signs = VGroup()
-                for j in range(4):
-                    plus_text = Text("+", font_size=24, color=WHITE)
-                    plus_text.move_to(POS_ANIM_CENTER + LEFT * 1.6 + RIGHT * j * 0.8)
-                    plus_signs.add(plus_text)
-                
-                self.play(Write(plus_signs))
-                
-                # 显示结果
-                equals_text = Text("= 28", font_size=28, color=COLOR_CALCULATION)
-                equals_text.move_to(POS_ANIM_CENTER + RIGHT * 2.5)
-                self.play(Write(equals_text))
-                self.wait(1)
-                
-            elif i == 3:  # 检验除法
-                division = MathTex("28 \\div 5 = 5.6", font_size=32, color=COLOR_FAIL)
-                division.move_to(POS_ANIM_CENTER)
-                self.play(Write(division))
-                
-                cross = Line(LEFT, RIGHT, color=RED, stroke_width=8).scale(0.5)
-                cross.move_to(division)
-                self.play(Create(cross))
-                self.wait(1)
-                
-            elif i == 4:  # 新的组合
-                # 清除之前的动画
-                self.play(FadeOut(*self.mobjects[-10:]))
-                
-                # 显示新组合
-                new_combo = VGroup()
-                numbers = [2, 3, 5, 7, 13]
-                for j, num in enumerate(numbers):
-                    num_text = Text(str(num), font_size=28, color=COLOR_PRIME)
-                    if num == 13:
-                        num_text.set_color(COLOR_HIGHLIGHT)
-                    num_text.move_to(POS_ANIM_CENTER + LEFT * 2 + RIGHT * j * 0.8)
-                    new_combo.add(num_text)
-                
-                self.play(Write(new_combo))
-                
-                # 显示新的加法
-                new_plus = VGroup()
-                for j in range(4):
-                    plus_text = Text("+", font_size=24, color=WHITE)
-                    plus_text.move_to(POS_ANIM_CENTER + LEFT * 1.6 + RIGHT * j * 0.8)
-                    new_plus.add(plus_text)
-                
-                self.play(Write(new_plus))
-                
-                new_result = Text("= 30", font_size=28, color=COLOR_SUCCESS)
-                new_result.move_to(POS_ANIM_CENTER + RIGHT * 2.5)
-                self.play(Write(new_result))
-                self.wait(1)
-                
-            elif i == 5:  # 最终验证
-                final_division = MathTex("30 \\div 5 = 6", font_size=32, color=COLOR_SUCCESS)
-                final_division.move_to(POS_ANIM_CENTER + DOWN * 0.8)
-                self.play(Write(final_division))
-                
-                checkmark = Text("✓", font_size=40, color=COLOR_SUCCESS)
-                checkmark.move_to(final_division.get_right() + RIGHT * 0.5)
-                self.play(Write(checkmark))
-                self.wait(2)
-            
-            self.wait(0.5)
-
-    def play_rolling_step_text(self, step):
-        text_content = step["text"]
-        math_content = step.get("math", "")
+        # 步骤1: 建立数学模型
+        self.play_rolling_step_text(steps[0])
+        equation = MathTex(steps[0]["math"], color=COLOR_CALCULATION).scale(0.8)
+        equation.move_to(POS_ANIM_CENTER)
+        self.play(Write(equation))
+        self.wait(1)
+        anim_group.add(equation)
         
-        # 文本行
-        text_obj = Text(text_content, font_size=20, color=WHITE, font=FONT_NAME)
-        text_obj.move_to(POS_TEXT_BASE + DOWN * len(self.text_lines_group) * 0.6)
+        # 步骤2: 展示质数序列
+        self.play_rolling_step_text(steps[1])
+        primes = MathTex(steps[1]["math"], color=COLOR_PRIME).scale(0.7)
+        primes.move_to([POS_ANIM_CENTER[0], POS_ANIM_CENTER[1] - 0.8, 0])
+        self.play(Write(primes))
+        self.wait(1)
+        anim_group.add(primes)
         
-        # 数学公式行（如果有）
-        if math_content:
-            math_obj = MathTex(math_content, font_size=18, color=COLOR_HIGHLIGHT)
-            math_obj.next_to(text_obj, DOWN, buff=0.3)
-        
-        # 播放音频
-        if os.path.exists(f"step_{len(self.text_lines_group)}_audio.mp3"):
-            self.add_sound(f"step_{len(self.text_lines_group)}_audio.mp3")
-        else:
-            os.system(f'say "{step["speech"]}"')
-        
-        # 动画显示
-        self.play(Write(text_obj))
-        if math_content:
-            self.play(Write(math_obj))
-            self.text_lines_group.add(VGroup(text_obj, math_obj))
-        else:
-            self.text_lines_group.add(text_obj)
-
-    def show_cover_phase(self):
-        # 背景
-        background = Rectangle(width=config.frame_width, height=config.frame_height, 
-                             fill_color=COLOR_BG, fill_opacity=1, stroke_width=0)
-        
-        # 标题
-        title = Text("奥数题解析", font_size=48, color=COLOR_HIGHLIGHT, font=FONT_NAME)
-        subtitle = Text("Prime Numbers Average", font_size=24, color=WHITE, font=FONT_NAME)
-        subtitle.next_to(title, DOWN, buff=0.5)
-        
-        cover_group = VGroup(background, title, subtitle)
-        self.play(FadeIn(cover_group))
+        # 步骤3: 分析包含2的必要性
+        self.play_rolling_step_text(steps[2])
+        analysis = MathTex(steps[2]["math"], color=COLOR_HIGHLIGHT).scale(0.7)
+        analysis.move_to([POS_ANIM_CENTER[0], POS_ANIM_CENTER[1] - 1.6, 0])
+        self.play(Write(analysis))
         self.wait(1)
         
-        return cover_group
+        # 清理屏幕
+        self.play(FadeOut(anim_group), FadeOut(analysis))
+        anim_group = VGroup()
+        
+        # 步骤4: 第一次尝试
+        self.play_rolling_step_text(steps[3])
+        first_try = MathTex(steps[3]["math"], color=COLOR_CALCULATION).scale(0.8)
+        first_try.move_to(POS_ANIM_CENTER)
+        
+        # 动态计算过程
+        calc_steps = [
+            MathTex(r"2 + 3 = 5", color=COLOR_PRIME).scale(0.6),
+            MathTex(r"5 + 5 = 10", color=COLOR_PRIME).scale(0.6),
+            MathTex(r"10 + 7 = 17", color=COLOR_PRIME).scale(0.6),
+            MathTex(r"17 + 11 = 28", color=COLOR_PRIME).scale(0.6)
+        ]
+        
+        for i, step in enumerate(calc_steps):
+            step.move_to([POS_ANIM_CENTER[0], POS_ANIM_CENTER[1] - 0.8 - i * 0.4, 0])
+        
+        self.play(Write(first_try))
+        for step in calc_steps:
+            self.play(Write(step))
+            self.wait(0.3)
+        
+        anim_group.add(first_try, *calc_steps)
+        self.wait(1)
+        
+        # 步骤5: 检验结果
+        self.play_rolling_step_text(steps[4])
+        result1 = MathTex(steps[4]["math"], color="#FF4444").scale(0.8)
+        result1.move_to([POS_ANIM_CENTER[0], POS_ANIM_CENTER[1] - 2.5, 0])
+        self.play(Write(result1))
+        self.wait(1)
+        
+        # 清理并准备第二次尝试
+        self.play(FadeOut(anim_group), FadeOut(result1))
+        
+        # 步骤6: 第二次尝试
+        self.play_rolling_step_text(steps[5])
+        second_try = MathTex(steps[5]["math"], color=COLOR_CALCULATION).scale(0.8)
+        second_try.move_to(POS_ANIM_CENTER)
+        self.play(Write(second_try))
+        
+        # 突出显示变化
+        highlight_box = SurroundingRectangle(second_try, color=COLOR_HIGHLIGHT, buff=0.1)
+        self.play(Create(highlight_box))
+        self.wait(1)
+        
+        # 步骤7: 最终验证
+        self.play_rolling_step_text(steps[6])
+        final_result = MathTex(steps[6]["math"], color=COLOR_SUCCESS).scale(1.0)
+        final_result.move_to([POS_ANIM_CENTER[0], POS_ANIM_CENTER[1] - 1.0, 0])
+        self.play(Write(final_result))
+        
+        # 成功动画效果
+        success_circle = Circle(radius=0.8, color=COLOR_SUCCESS).move_to(final_result.get_center())
+        self.play(Create(success_circle))
+        self.play(Flash(final_result, color=COLOR_SUCCESS))
+        
+        self.wait(2)
+        self.play(FadeOut(second_try), FadeOut(highlight_box), FadeOut(final_result), FadeOut(success_circle))
+
+    def play_rolling_step_text(self, step):
+        step_text = Text(step["text"], font=FONT_NAME, color=WHITE).scale(0.4)
+        step_text.move_to(POS_TEXT_BASE)
+        
+        if len(self.text_lines_group) >= 3:
+            self.play(
+                self.text_lines_group.animate.shift(UP * 0.6),
+                FadeIn(step_text),
+                run_time=0.5
+            )
+            old_line = self.text_lines_group[0]
+            self.text_lines_group.remove(old_line)
+            self.remove(old_line)
+        else:
+            step_text.move_to([POS_TEXT_BASE[0], POS_TEXT_BASE[1] - len(self.text_lines_group) * 0.6, 0])
+            self.play(FadeIn(step_text), run_time=0.3)
+        
+        self.text_lines_group.add(step_text)
+        
+        # 播放语音
+        audio_file = f"audio/step_{len(self.text_lines_group)-1}.wav"
+        if os.path.exists(audio_file):
+            self.add_sound(audio_file)
+        
+        self.wait(1.5)
+
+    def show_cover_phase(self):
+        logo = ImageMobject("assets/logo.png").scale(0.6).to_edge(UP + LEFT)
+        cover = ImageMobject("assets/cover.png").scale(0.8)
+        title = Text("奥数解题动画", font=FONT_NAME, color=COLOR_HIGHLIGHT).scale(1.2).next_to(cover, DOWN)
+        
+        self.play(FadeIn(logo), FadeIn(cover), Write(title))
+        self.wait(2)
+        return VGroup(logo, cover, title)
 
     def transition_to_solution_phase(self, cover_objects):
-        # 淡出封面
-        self.play(FadeOut(cover_objects))
+        problem_img_path = f"input/images/{self.problem_image_name}"
+        video_img = ImageMobject(problem_img_path).scale(0.9)
+        video_img.move_to([-3.5, 0, 0])
         
-        # 显示题目图片
-        try:
-            if os.path.exists(self.problem_image_name):
-                video_img = ImageMobject(self.problem_image_name)
-                video_img.scale_to_fit_width(6)
-                video_img.move_to(LEFT * 3 + UP * 0.5)
-                self.play(FadeIn(video_img))
-                return video_img
-        except:
-            pass
-        
-        return None
+        self.play(
+            FadeOut(cover_objects),
+            FadeIn(video_img)
+        )
+        return video_img
 
     def safe_read_problem(self, problem_data, video_img_obj):
-        # 播放问题音频
-        if os.path.exists("problem_audio.mp3"):
-            self.add_sound("problem_audio.mp3")
-        else:
-            os.system(f'say "{problem_data["speech"]}"')
+        problem_text = Text("题目分析", font=FONT_NAME, color=COLOR_HIGHLIGHT).scale(0.6)
+        problem_text.move_to([POS_TEXT_BASE[0], POS_TEXT_BASE[1] + 1, 0])
         
-        self.wait(3)
+        self.play(Write(problem_text))
+        
+        audio_file = "audio/problem.wav"
+        if os.path.exists(audio_file):
+            self.add_sound(audio_file)
+        
+        self.wait(2)
+        self.play(FadeOut(problem_text))
 
     def show_final_answer(self, final_answer_text):
-        # 最终答案
-        answer_bg = RoundedRectangle(width=4, height=1.2, corner_radius=0.3,
-                                   fill_color=COLOR_HIGHLIGHT, fill_opacity=0.3,
-                                   stroke_color=COLOR_HIGHLIGHT, stroke_width=3)
-        answer_bg.move_to(POS_ANIM_CENTER + DOWN * 2)
+        answer = Text(final_answer_text, font=FONT_NAME, color=COLOR_SUCCESS).scale(1.0)
+        answer.move_to(POS_ANIM_CENTER)
         
-        answer_text = Text(final_answer_text, font_size=32, color=COLOR_HIGHLIGHT, 
-                          font=FONT_NAME, weight=BOLD)
-        answer_text.move_to(answer_bg.get_center())
+        answer_box = SurroundingRectangle(answer, color=COLOR_SUCCESS, buff=0.3)
         
-        self.play(DrawBorderThenFill(answer_bg))
-        self.play(Write(answer_text))
-        
-        # 添加闪烁效果
-        self.play(answer_text.animate.set_color(WHITE), run_time=0.5)
-        self.play(answer_text.animate.set_color(COLOR_HIGHLIGHT), run_time=0.5)
-        
+        self.play(Write(answer), Create(answer_box))
+        self.play(Flash(answer, color=COLOR_SUCCESS))
         self.wait(2)
