@@ -43,8 +43,12 @@ FONT_SIZE_MATH    = 32          # 公式文字大小
 FONT_SIZE_SUB     = 24          # 字幕文字大小
 
 # 🖼️ 资源路径与常量
-LOGO_IMAGE_NAME    = "logo.png"
-COVER_BG_IMAGE     = "cover.png"
+# 注意：logo.png 和 cover.png 应放在项目根目录的 assets/ 文件夹下
+# 原题图片在 input/images/ 目录下
+ASSETS_DIR         = "assets"
+LOGO_IMAGE_NAME    = os.path.join(ASSETS_DIR, "logo.png")
+COVER_BG_IMAGE     = os.path.join(ASSETS_DIR, "cover.png")
+PROBLEM_IMAGE_DIR  = os.path.join("input", "images")
 COVER_FOOTER_TEXT  = "2025香港袋鼠数学竞赛中学中年级组"
 TTS_CACHE_DIR      = "tts_cache"
 
@@ -119,8 +123,9 @@ def prepare_all_audio(problem_data, steps_data):
 # ==============================================================================
 class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo6
     def construct(self):
-        # AI: 请根据用户输入的题号 N，自动生成 "image_N.png"
-        self.problem_image_name = "image_REPLACE_WITH_NUMBER.png"
+        # AI: 请根据用户输入的题号 N，自动生成完整路径
+        # 例如：self.problem_image_name = os.path.join(PROBLEM_IMAGE_DIR, "image_6.png")
+        self.problem_image_name = os.path.join(PROBLEM_IMAGE_DIR, "image_REPLACE_WITH_NUMBER.png")
 
         # [固定配置] 题号颜色
         self.question_label_text = "Q"

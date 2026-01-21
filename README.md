@@ -31,9 +31,9 @@ cp .env.example .env
 
 ## Running the Project
 
-### 准备题目图片
+### 准备资源文件
 
-将数学题目图片放入 `input/images/` 目录：
+1. **准备题目图片**：将数学题目图片放入 `input/images/` 目录
 
 ```bash
 input/images/
@@ -41,6 +41,16 @@ input/images/
 ├── image-2.png
 └── image-n.png
 ```
+
+2. **准备视频资源**（用于 Manim 动画）：将 logo 和封面图片放入 `assets/` 目录
+
+```bash
+assets/
+├── logo.png      # 视频左上角的 Logo
+└── cover.png     # 封面背景图
+```
+
+详细说明请查看 `assets/README.md`
 
 ### 运行解题程序
 
@@ -111,7 +121,11 @@ ANTHROPIC_API_KEY=your_api_key_here
 ## Project Structure
 
 ```
-exam_mcp_project/
+claude-demo/
+├── assets/                 # 视频资源目录
+│   ├── README.md          # 资源说明文档
+│   ├── logo.png           # Logo 图片（需要您提供）
+│   └── cover.png          # 封面背景图（需要您提供）
 ├── input/                  # 输入目录
 │   ├── images/            # 题目图片
 │   │   ├── image-1.png
@@ -122,12 +136,22 @@ exam_mcp_project/
 │   │   ├── image-1.md    # 解题步骤
 │   │   └── image-1.py    # Python代码
 │   └── ...
+├── prompts/               # 模块化提示词系统
+│   ├── README.md
+│   ├── stage0_master.txt
+│   ├── stage1_visual_strategy.txt
+│   ├── stage2_math_solution.txt
+│   └── stage3_manim.txt
+├── templates/             # 代码模板
+│   ├── manim_template.py  # Manim 动画模板
+│   └── jsxgraph_template.html
 ├── tools.py               # 工具函数（创建目录、写文件等）
 ├── server.py              # MCP服务器（工具注册）
 ├── run.py                 # 主程序（调用Claude API）
 ├── mcp.json              # MCP配置
 ├── requirements.txt       # Python依赖
-└── .env.example          # 环境变量示例
+├── .env.example          # 环境变量示例
+└── .gitignore            # Git忽略文件配置
 ```
 
 ## Features
