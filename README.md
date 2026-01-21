@@ -1,91 +1,144 @@
 # claude-demo
 
-A demo project.
+数学解题系统 - 基于Claude API的MCP服务器项目
 
 ## Overview
 
-This project demonstrates [brief description of what the project does].
+这个项目是一个基于Claude API和MCP (Model Context Protocol)的数学解题系统。它能够自动处理数学题目图片，生成详细的中文解题步骤、Python代码和Manim动画代码。
 
 ## Prerequisites
 
-Before running this project, ensure you have the following installed:
+在运行此项目之前，请确保已安装：
 
-- [List required software, tools, or dependencies]
-- [e.g., Node.js 18+, Python 3.9+, Docker, etc.]
+- Python 3.9+
+- Anthropic API密钥（从 https://console.anthropic.com/ 获取）
+- pip（Python包管理器）
 
 ## Installation
 
 ```bash
-# Clone the repository
+# 克隆仓库
 git clone https://github.com/airplanecraft/claude-demo.git
-cd claude-demo
+cd claude-demo/exam_mcp_project
 
-# Install dependencies
-# [Add installation commands here]
-# Examples:
-# npm install
-# pip install -r requirements.txt
-# bundle install
+# 安装依赖
+pip install -r requirements.txt
+
+# 配置API密钥
+cp .env.example .env
+# 编辑 .env 文件，添加你的 Anthropic API 密钥
 ```
 
 ## Running the Project
 
-### Development Mode
+### 准备题目图片
+
+将数学题目图片放入 `input/images/` 目录：
 
 ```bash
-# [Add command to run in development mode]
-# Examples:
-# npm run dev
-# python main.py
-# docker-compose up
+exam_mcp_project/input/images/
+├── image-1.png
+├── image-2.png
+└── image-n.png
 ```
 
-### Production Mode
+### 运行解题程序
 
 ```bash
-# [Add command to run in production mode]
-# Examples:
-# npm start
-# python main.py --prod
-# docker-compose -f docker-compose.prod.yml up
+cd exam_mcp_project
+python run.py
+```
+
+程序会自动：
+1. 读取 `input/images/` 目录下的所有图片
+2. 逐张调用Claude API分析题目
+3. 生成解题步骤和代码
+4. 保存到 `output/` 目录
+
+### 运行MCP服务器（可选）
+
+```bash
+python server.py
 ```
 
 ## Usage
 
-[Provide examples of how to use the project]
+### 输出结果
 
-```bash
-# Example commands or API calls
+每道题目的解答会保存在独立的目录中：
+
 ```
+exam_mcp_project/output/
+├── image-1/
+│   ├── image-1.md    # 中文解题步骤
+│   └── image-1.py    # Python代码（包含解题代码和Manim动画）
+├── image-2/
+│   ├── image-2.md
+│   └── image-2.py
+└── ...
+```
+
+### 输出内容包括
+
+1. **Markdown文件（.md）**：
+   - 题目分析
+   - 解题思路
+   - 完整的解题步骤
+   - Python代码和Manim代码
+
+2. **Python文件（.py）**：
+   - 可运行的解题代码
+   - Manim动画生成代码
 
 ## Configuration
 
-[Explain any configuration files or environment variables needed]
+### 环境变量配置
+
+在 `exam_mcp_project/` 目录下创建 `.env` 文件：
 
 ```bash
-# Example: Create a .env file with the following variables
-# API_KEY=your_api_key
-# DATABASE_URL=your_database_url
+# Anthropic API Key
+ANTHROPIC_API_KEY=your_api_key_here
 ```
 
-## Testing
+### 提示词配置
 
-```bash
-# Run tests
-# [Add test commands]
-# Examples:
-# npm test
-# pytest
-# cargo test
-```
+编辑 `input/prompt.txt` 来自定义解题提示词。默认提示词要求：
+- 详细的中文解题步骤
+- Python解题代码
+- Manim动画代码
 
 ## Project Structure
 
 ```
-claude-demo/
-├── [Describe your project structure]
-└── README.md
+exam_mcp_project/
+├── input/                  # 输入目录
+│   ├── images/            # 题目图片
+│   │   ├── image-1.png
+│   │   └── image-n.png
+│   └── prompt.txt         # 解题提示词
+├── output/                # 输出目录（自动生成）
+│   ├── image-1/
+│   │   ├── image-1.md    # 解题步骤
+│   │   └── image-1.py    # Python代码
+│   └── ...
+├── tools.py               # 工具函数（创建目录、写文件等）
+├── server.py              # MCP服务器（工具注册）
+├── run.py                 # 主程序（调用Claude API）
+├── mcp.json              # MCP配置
+├── requirements.txt       # Python依赖
+└── .env.example          # 环境变量示例
 ```
+
+## Features
+
+- ✅ 自动处理多张题目图片
+- ✅ 调用Claude 4 Sonnet生成高质量解答
+- ✅ 生成详细的中文解题步骤（Markdown格式）
+- ✅ 生成可运行的Python代码
+- ✅ 支持Manim动画代码生成
+- ✅ MCP服务器架构，可集成到其他工具
+- ✅ 结果按题目独立保存，便于管理
 
 ## Contributing
 

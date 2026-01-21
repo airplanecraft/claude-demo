@@ -1,0 +1,16 @@
+# Anthropic Claude API
+anthropic>=0.40.0
+
+# MCP Server Framework
+mcp>=1.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Optional: For enhanced math problem solving
+# numpy>=1.24.0
+# sympy>=1.12
+# matplotlib>=3.7.0
+
+# Optional: For Manim animations
+# manim>=0.18.0

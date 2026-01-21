@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "exam-solver": {
+      "command": "python",
+      "args": [
+        "server.py"
+      ],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}
