@@ -22,3 +22,6 @@ media/
 *.swp
 *.swo
 .DS_Store
+#cloude env
+claudevenv/
+cloudeenv/
