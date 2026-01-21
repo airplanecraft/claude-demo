@@ -401,7 +401,7 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         self.camera.background_color = COLOR_BG
         grid = NumberPlane(x_range=[-8, 8, 1], y_range=[-5, 5, 1], background_line_style={"stroke_color": COLOR_GRID, "stroke_width": 2, "stroke_opacity": 0.5}, axis_config={"stroke_width": 0})
         separator = Line(start=UP * 4, end=DOWN * 4, color=COLOR_SEPARATOR, stroke_width=2).move_to([SEPARATOR_X, 0, 0])
-        logo = ImageMobject(LOGO_IMAGE_NAME).scale(LOGO_SCALE_FACTOR).to_corner(UL, buff=LOGO_BUFF) if os.path.exists(LOGO_IMAGE_NAME) else VGroup()
+        logo = ImageMobject(LOGO_IMAGE_NAME).scale(LOGO_SCALE_FACTOR).to_corner(UL, buff=LOGO_BUFF) if os.path.exists(LOGO_IMAGE_NAME) else Group()
 
         if os.path.exists(self.problem_image_name):
             target_img = ImageMobject(self.problem_image_name).scale_to_fit_width(VIDEO_IMG_WIDTH).move_to([VIDEO_LEFT_PANEL_X, 0.5, 0])
