@@ -13,6 +13,8 @@ from pathlib import Path
 from typing import Dict, Any
 import anthropic
 from dotenv import load_dotenv
+from PIL import Image
+import io
 
 # 导入工具函数
 from tools import (
@@ -38,30 +40,149 @@ load_dotenv()
 logger.info("环境变量已加载")
 
 
-def encode_image(image_path: str) -> str:
+def compress_image(image_path: str, max_size_kb: int = 800, quality: int = 85) -> bytes:
     """
-    将图片编码为base64格式
+    压缩图片到指定大小以下
+
+    Args:
+        image_path: 原始图片路径
+        max_size_kb: 目标最大文件大小（KB），默认 800KB
+        quality: JPEG 压缩质量（1-100），默认 85
+
+    Returns:
+        压缩后的图片字节数据
+    """
+    try:
+        logger.info(f"开始压缩图片: {image_path}")
+        original_size = os.path.getsize(image_path)
+        logger.info(f"原始图片大小: {original_size / 1024:.2f} KB")
+
+        # 打开图片
+        with Image.open(image_path) as img:
+            # 转换为 RGB（如果是 RGBA 或其他模式）
+            if img.mode in ('RGBA', 'LA', 'P'):
+                logger.info(f"图片模式为 {img.mode}，转换为 RGB")
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+                background.paste(img, mask=img.split()[-1] if img.mode in ('RGBA', 'LA') else None)
+                img = background
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            original_width, original_height = img.size
+            logger.info(f"原始尺寸: {original_width} x {original_height}")
+
+            # 如果原始文件已经小于目标大小，尝试轻微压缩
+            if original_size <= max_size_kb * 1024:
+                logger.info(f"原始图片已小于 {max_size_kb}KB，进行轻微压缩")
+                output = io.BytesIO()
+                img.save(output, format='JPEG', quality=quality, optimize=True)
+                compressed_data = output.getvalue()
+                compressed_size = len(compressed_data)
+                logger.info(f"压缩后大小: {compressed_size / 1024:.2f} KB (质量: {quality})")
+                logger.info(f"压缩率: {(1 - compressed_size / original_size) * 100:.1f}%")
+                return compressed_data
+
+            # 如果文件较大，需要更激进的压缩
+            logger.info(f"图片大于 {max_size_kb}KB，进行压缩处理")
+
+            # 先尝试调整质量参数
+            current_quality = quality
+            attempt = 1
+            max_attempts = 5
+
+            while current_quality > 20 and attempt <= max_attempts:
+                output = io.BytesIO()
+                img.save(output, format='JPEG', quality=current_quality, optimize=True)
+                compressed_data = output.getvalue()
+                compressed_size = len(compressed_data)
+
+                logger.info(f"尝试 {attempt}/{max_attempts}: 质量={current_quality}, 大小={compressed_size / 1024:.2f} KB")
+
+                if compressed_size <= max_size_kb * 1024:
+                    logger.info(f"✓ 压缩成功！最终大小: {compressed_size / 1024:.2f} KB")
+                    logger.info(f"压缩率: {(1 - compressed_size / original_size) * 100:.1f}%")
+                    return compressed_data
+
+                # 降低质量
+                current_quality -= 15
+                attempt += 1
+
+            # 如果降低质量还不够，尝试缩小尺寸
+            logger.warning(f"降低质量未达到目标，尝试缩小尺寸")
+            scale_factor = 0.8
+            attempt = 1
+
+            while scale_factor > 0.3 and attempt <= 5:
+                new_width = int(original_width * scale_factor)
+                new_height = int(original_height * scale_factor)
+                resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                output = io.BytesIO()
+                resized_img.save(output, format='JPEG', quality=70, optimize=True)
+                compressed_data = output.getvalue()
+                compressed_size = len(compressed_data)
+
+                logger.info(f"尝试缩放 {attempt}/5: 尺寸={new_width}x{new_height} ({scale_factor*100:.0f}%), 大小={compressed_size / 1024:.2f} KB")
+
+                if compressed_size <= max_size_kb * 1024:
+                    logger.info(f"✓ 缩放压缩成功！最终大小: {compressed_size / 1024:.2f} KB")
+                    logger.info(f"最终尺寸: {new_width} x {new_height}")
+                    logger.info(f"压缩率: {(1 - compressed_size / original_size) * 100:.1f}%")
+                    return compressed_data
+
+                scale_factor -= 0.1
+                attempt += 1
+
+            # 如果还是太大，返回最小的版本
+            logger.warning(f"无法压缩到 {max_size_kb}KB 以下，返回最小版本")
+            return compressed_data
+
+    except Exception as e:
+        logger.error(f"压缩图片失败: {str(e)}", exc_info=True)
+        logger.warning("压缩失败，使用原始图片")
+        # 如果压缩失败，返回原始图片数据
+        with open(image_path, 'rb') as f:
+            return f.read()
+
+
+def encode_image(image_path: str, compress: bool = True) -> str:
+    """
+    将图片编码为base64格式（可选压缩）
 
     Args:
         image_path: 图片文件路径
+        compress: 是否压缩图片（默认 True）
 
     Returns:
         base64编码的图片数据
     """
     try:
-        logger.info(f"开始编码图片: {image_path}")
+        logger.info(f"开始处理图片: {image_path}")
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"图片文件不存在: {image_path}")
 
-        file_size = os.path.getsize(image_path)
-        logger.info(f"图片大小: {file_size / 1024:.2f} KB")
+        original_size = os.path.getsize(image_path)
+        logger.info(f"原始文件大小: {original_size / 1024:.2f} KB")
 
-        with open(image_path, "rb") as image_file:
-            encoded = base64.standard_b64encode(image_file.read()).decode("utf-8")
-            logger.info(f"图片编码完成，Base64 长度: {len(encoded)}")
-            return encoded
+        # 压缩图片
+        if compress:
+            image_data = compress_image(image_path, max_size_kb=800, quality=85)
+            logger.info(f"使用压缩后的图片数据: {len(image_data) / 1024:.2f} KB")
+        else:
+            logger.info("跳过压缩，使用原始图片")
+            with open(image_path, "rb") as image_file:
+                image_data = image_file.read()
+
+        # Base64 编码
+        encoded = base64.standard_b64encode(image_data).decode("utf-8")
+        logger.info(f"Base64 编码完成，长度: {len(encoded)} 字符")
+        logger.info(f"Base64 数据大小: {len(encoded) / 1024:.2f} KB")
+
+        return encoded
     except Exception as e:
-        logger.error(f"编码图片失败: {image_path}, 错误: {str(e)}")
+        logger.error(f"编码图片失败: {image_path}, 错误: {str(e)}", exc_info=True)
         raise
 
 
@@ -589,10 +710,14 @@ def process_all_images():
         return
     logger.info("API 密钥已找到")
 
-    # 创建Anthropic客户端
+    # 创建Anthropic客户端（timeout 120秒）
     try:
         logger.info("创建 Anthropic 客户端...")
-        client = anthropic.Anthropic(api_key=api_key)
+        logger.info("设置连接超时时间: 120 秒")
+        client = anthropic.Anthropic(
+            api_key=api_key,
+            timeout=120.0  # 设置 120 秒超时
+        )
         logger.info("Anthropic 客户端创建成功")
     except Exception as e:
         logger.error(f"创建 Anthropic 客户端失败: {str(e)}", exc_info=True)

@@ -7,6 +7,9 @@ mcp>=1.0.0
 # Environment variables
 python-dotenv>=1.0.0
 
+# Image processing (for compression before upload)
+Pillow>=10.0.0
+
 # Optional: For enhanced math problem solving
 # numpy>=1.24.0
 # sympy>=1.12
