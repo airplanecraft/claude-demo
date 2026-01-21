@@ -1,0 +1,24 @@
+# 环境变量文件（包含API密钥）
+.env
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 语音缓存
+tts_cache/
+
+# Manim 输出
+media/
+
+# 输出文件（可选：如果不想上传解题结果）
+# output/
+
+# IDE 配置
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

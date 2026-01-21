@@ -1,0 +1,129 @@
+# 第四阶段：JSXGraph 交互代码生成
+
+## 任务
+基于 `templates/jsxgraph_template.html` 生成独立的 HTML 交互文件。
+
+## 铁律 (CRITICAL REQUIREMENTS)
+
+### 1. 文件名规则
+- HTML `<img>` 标签的 `src` 属性必须自动设置为 `image_{题号}.png`
+- 必须替换模板中的 `REPLACE_WITH_CORRECT_FILENAME.png`
+- 示例：题号为 6，则 `src="image_6.png"`
+
+### 2. 独立文件
+- 输出完整的 HTML 代码
+- 必须可以在浏览器中直接打开运行
+- 不依赖外部文件（除了题目图片）
+
+### 3. 基于模版
+- 必须严格使用 `templates/jsxgraph_template.html` 的 HTML 结构
+- 仅修改 `<script>` 标签内的 JavaScript 逻辑部分
+- 不要修改 CSS 样式和页面布局
+
+### 4. 语言保留
+- 说明文字、按钮文本必须保持中文
+- JS 代码中的注释必须保持中文
+- 不得翻译成英文
+
+## 需要编写的部分
+
+### 1. 初始化画板
+根据题目特点调整画板参数：
+
+```javascript
+var board = JXG.JSXGraph.initBoard('jxgbox', {
+    boundingbox: [-5, 5, 5, -5],  // 根据题目调整坐标范围
+    axis: true,                    // 是否显示坐标轴
+    showCopyright: false,
+    showNavigation: false
+});
+```
+
+### 2. 定义交互元素
+必须实现与 Manim 视频解题逻辑一致的交互功能：
+
+**几何题示例**：
+```javascript
+// 创建可拖动的点
+var A = board.create('point', [1, 2], {name: 'A', size: 3});
+var B = board.create('point', [3, 4], {name: 'B', size: 3});
+
+// 创建线段
+var line = board.create('line', [A, B], {strokeColor: '#0000ff'});
+
+// 实时显示长度
+var text = board.create('text', [0, -4, function() {
+    return '长度: ' + A.Dist(B).toFixed(2);
+}]);
+```
+
+**数列题示例**：
+```javascript
+// 创建滑块控制项数
+var slider = board.create('slider', [[0, 4], [4, 4], [1, 5, 20]], {
+    name: '项数n',
+    snapWidth: 1
+});
+
+// 根据滑块值显示数列
+var points = [];
+board.create('text', [0, -4, function() {
+    var n = Math.floor(slider.Value());
+    var sequence = [];
+    for (var i = 1; i <= n; i++) {
+        sequence.push(i * 2); // 示例：偶数数列
+    }
+    return '数列: ' + sequence.join(', ');
+}]);
+```
+
+**逻辑题示例**：
+```javascript
+// 创建可点击切换状态的点
+var states = [false, false, false];
+var points = [];
+
+for (var i = 0; i < 3; i++) {
+    (function(index) {
+        var p = board.create('point', [index * 2 - 2, 0], {
+            name: (index + 1).toString(),
+            size: 4,
+            fillColor: function() {
+                return states[index] ? '#ff0000' : '#0000ff';
+            }
+        });
+        p.on('down', function() {
+            states[index] = !states[index];
+            board.update();
+        });
+        points.push(p);
+    })(i);
+}
+```
+
+## 模板文件位置
+完整模板代码见：`templates/jsxgraph_template.html`
+
+## 交互设计原则
+
+### 1. 与 Manim 动画一致
+- 交互逻辑必须体现 Manim 视频中的解题步骤
+- 用户操作应该能探索和验证解题方法
+- 关键参数和关系要实时显示
+
+### 2. 用户友好
+- 提供清晰的操作说明
+- 交互元素要明显（可拖动、可点击）
+- 即时反馈（显示计算结果、状态变化）
+
+### 3. 教学价值
+- 允许用户改变参数观察变化
+- 展示数学关系的动态性
+- 帮助理解解题的核心思想
+
+## 输出要求
+1. 输出完整的 HTML 代码
+2. 正确替换图片文件名
+3. 包含完整的交互逻辑
+4. 代码可以直接在浏览器中运行
+5. 保持中文注释和说明

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Math Interactive Solution</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script type="text/javascript" charset="UTF-8" src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; }
+        .header { background-color: #333; color: white; padding: 10px; text-align: center; }
+        .layout-container { display: flex; flex: 1; height: 100%; }
+
+        /* 左侧面板：显示原题 */
+        .left-panel {
+            flex: 1;
+            padding: 20px;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            border-right: 2px solid #ccc;
+        }
+        .problem-img {
+            max-width: 100%;
+            height: auto;
+            border: 2px solid #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 右侧面板：JSXGraph 画板 */
+        .right-panel {
+            flex: 2;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #jxgbox {
+            width: 700px;
+            height: 600px;
+            border: 1px solid #ccc;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .instruction { margin-bottom: 10px; font-weight: bold; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="header">Math Interactive Playground</div>
+    <div class="layout-container">
+        <div class="left-panel">
+            <h3>Original Problem</h3>
+            <img src="REPLACE_WITH_CORRECT_FILENAME.png" alt="Problem Image" class="problem-img">
+        </div>
+        <div class="right-panel">
+            <div class="instruction">交互演示：请尝试操作下方的图形以探索解题逻辑</div>
+            <div id="jxgbox" class="jxgbox"></div>
+        </div>
+    </div>
+    <script>
+        // 1. 初始化画板
+        // [AI 指令: 根据题目数据调整 boundingbox 范围]
+        var board = JXG.JSXGraph.initBoard('jxgbox', {
+            boundingbox: [-5, 5, 5, -5],
+            axis: true,
+            showCopyright: false,
+            showNavigation: false
+        });
+
+        // 2. 定义交互元素与逻辑
+        // [AI 指令: 在此处实现与 Manim 视频中解题逻辑一致的交互功能]
+    </script>
+</body>
+</html>

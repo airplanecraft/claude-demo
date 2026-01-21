@@ -1,0 +1,111 @@
+# 第三阶段：Manim 视频代码生成
+
+## 任务
+基于 `templates/manim_template.py` 文件生成完整的 `SolutionVideoX` 类。
+
+## 铁律 (CRITICAL REQUIREMENTS)
+
+### 1. 高清画质
+- 模版中已包含 `config.pixel_height = 1080` 等设置
+- 必须保留这些配置以确保输出 1080p 视频
+
+### 2. 布局防重叠 (最重要)
+**动画区域**：
+- 所有几何图形、公式推导动画必须限制在屏幕右上区域
+- 必须使用常量 `POS_ANIM_CENTER = [3.5, 2.0, 0]` 作为动画中心点
+- 示例：`circle.move_to(POS_ANIM_CENTER)`
+
+**文字区域**：
+- 解题步骤文字自动出现在屏幕右下区域 `POS_TEXT_BASE = [3.5, -3.0, 0]`
+- 由 `play_rolling_step_text()` 方法自动处理，无需手动干预
+
+**严禁越界**：
+- 编写 `play_visual_reasoning()` 时，确保动画物体底部不要低于 Y=0
+- 否则会遮挡下方的步骤文字
+
+### 3. 文件名规则
+- 必须根据题号自动生成文件名
+- 格式：`image_{题号}.png`
+- 示例：题号为 6，则 `self.problem_image_name = "image_6.png"`
+
+### 4. 类名规则
+- 类名格式：`SolutionVideo{题号}`
+- 示例：`class SolutionVideo6(Scene):`
+
+### 5. 环境配置
+- 必须保留模版头部关于 `TexTemplate`、`xelatex` 和 `ctex` 的配置代码
+- 不得修改字体、颜色等全局配置
+
+## 需要编写的部分
+
+### 1. `construct()` 方法中的数据定义
+
+```python
+# 题目语音描述
+problem_data = {
+    "speech": "这道题要求我们..."
+}
+
+# 解题步骤数据
+steps_data = [
+    {
+        "text": "步骤1",           # 显示的文字
+        "math": "x = 5",          # LaTeX 公式（可选）
+        "speech": "第一步我们..."  # 语音描述
+    },
+    {
+        "text": "步骤2",
+        "math": "",
+        "speech": "接下来..."
+    },
+    # ... 更多步骤
+]
+
+# 最终答案
+final_answer_text = "答案：B"
+```
+
+### 2. `play_visual_reasoning()` 方法
+
+这是核心动画逻辑，需要：
+- 遍历 `steps_data` 中的每一步
+- 为每一步创建对应的动画
+- 调用 `self.play_rolling_step_text(step)` 显示文字
+- 所有动画对象必须定位在 `POS_ANIM_CENTER` 附近
+
+**示例代码框架**：
+
+```python
+def play_visual_reasoning(self, steps):
+    # 初始化动画对象（位于右上角）
+    main_obj = VGroup().move_to(POS_ANIM_CENTER)
+
+    for i, step in enumerate(steps):
+        # 显示滚动文字
+        self.play_rolling_step_text(step)
+
+        # 根据步骤内容创建对应动画
+        if i == 0:
+            # 第一步的动画
+            obj1 = Circle(radius=0.5, color=COLOR_HIGHLIGHT)
+            obj1.move_to(POS_ANIM_CENTER)
+            self.play(Create(obj1))
+            main_obj.add(obj1)
+
+        elif i == 1:
+            # 第二步的动画
+            # ...
+
+        # 确保所有对象都在右上角区域
+        # 检查：main_obj 的底部不应低于 Y=0
+```
+
+## 模板文件位置
+完整模板代码见：`templates/manim_template.py`
+
+## 输出要求
+1. 输出完整的 Python 代码文件
+2. 代码必须可以直接运行
+3. 包含所有必要的数据定义
+4. 动画逻辑清晰、符合解题步骤
+5. 严格遵循布局规范
