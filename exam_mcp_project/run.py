@@ -109,18 +109,19 @@ def load_templates() -> Dict[str, str]:
 
 def build_full_prompt(base_prompt: str, image_name: str, templates: Dict[str, str]) -> str:
     """
-    构建包含模板内容的完整 prompt
+    构建包含模板指引的完整 prompt（轻量级版本，避免 Connection error）
 
     Args:
         base_prompt: 基础 prompt
         image_name: 图片文件名
-        templates: 模板字典
+        templates: 模板字典（不再嵌入完整代码）
 
     Returns:
         完整的 prompt
     """
     question_number = get_question_number(image_name)
 
+    # 轻量级 prompt：不嵌入完整模板，只提供结构要求
     full_prompt = f"""{base_prompt}
 
 # 题号信息
@@ -129,53 +130,230 @@ def build_full_prompt(base_prompt: str, image_name: str, templates: Dict[str, st
 
 ---
 
-# Manim 模板代码（完整）
-请严格基于以下模板生成 Manim 代码。模板中已经包含了所有必要的配置、颜色、布局、封面、Logo、原题显示、动画讲解、声音、位置、答案和解题步骤的展示功能。
+# Manim 代码生成要求（基于模板 templates/manim_template.py）
 
-**您只需要**：
-1. 将类名 `SolutionVideoTEMPLATE` 改为 `SolutionVideo{question_number}`
-2. 将 `image_REPLACE_WITH_NUMBER.png` 改为 `image_{question_number}.png`
-3. 填充 `problem_data` 和 `steps_data` 数据
-4. 实现 `play_visual_reasoning(self, steps)` 方法中的动画逻辑
+## 必须遵循的模板结构
 
-**完整模板**：
+### 1. 全局配置（必须包含）
 ```python
-{templates.get('manim', '# Manim 模板未找到')}
+import os
+import asyncio
+import edge_tts
+from manim import *
+
+config.disable_caching = True
+config.pixel_height = 1080
+config.pixel_width = 1920
+config.frame_rate = 60
+
+# LaTeX 中文配置
+my_tex_template = TexTemplate()
+my_tex_template.tex_compiler = "xelatex"
+my_tex_template.output_format = ".xdv"
+my_tex_template.add_to_preamble(r"\\usepackage[fontset=mac]{{ctex}}")
+config.tex_template = my_tex_template
 ```
+
+### 2. 颜色和常量定义（必须包含）
+```python
+COLOR_BG = "#415049"
+COLOR_HIGHLIGHT = "#FFD700"
+FONT_NAME = "Heiti SC"
+POS_ANIM_CENTER = [3.5, 2.0, 0]  # 动画区域中心（右上）
+POS_TEXT_BASE = [3.5, -3.0, 0]   # 文字区域（右下）
+# ... 其他颜色和布局常量
+```
+
+### 3. 辅助函数（必须包含）
+- `generate_audio_file()` - TTS 语音生成
+- `prepare_all_audio()` - 准备所有音频
+
+### 4. Scene 类结构
+```python
+class SolutionVideo{question_number}(Scene):
+    def construct(self):
+        self.problem_image_name = "image_{question_number}.png"
+        self.text_lines_group = VGroup()
+
+        # 定义数据
+        problem_data = {{"speech": "..."}}
+        steps_data = [{{"text": "...", "math": "...", "speech": "..."}}, ...]
+        final_answer_text = "答案：..."
+
+        prepare_all_audio(problem_data, steps_data)
+
+        # 执行流程
+        cover_objects = self.show_cover_phase()
+        video_img_obj = self.transition_to_solution_phase(cover_objects)
+        self.safe_read_problem(problem_data, video_img_obj)
+        self.play_visual_reasoning(steps_data)
+        self.show_final_answer(final_answer_text)
+
+    def play_visual_reasoning(self, steps):
+        # 您需要实现的动画逻辑
+        # 所有动画对象必须位于 POS_ANIM_CENTER
+        for step in steps:
+            self.play_rolling_step_text(step)
+            # 添加您的动画代码
+
+    # 以下方法已在模板中定义，直接复制即可：
+    # - play_rolling_step_text()
+    # - show_cover_phase()
+    # - transition_to_solution_phase()
+    # - safe_read_problem()
+    # - show_final_answer()
+```
+
+## 关键要求
+1. **类名**: `SolutionVideo{question_number}`
+2. **图片文件名**: `image_{question_number}.png`
+3. **布局规范**: 动画在 `POS_ANIM_CENTER`，不遮挡下方文字
+4. **包含所有辅助方法**: show_cover_phase, transition_to_solution_phase 等
+5. **TTS 支持**: 使用 edge_tts 和 Mac say 命令
 
 ---
 
-# JSXGraph 模板代码（完整）
-请严格基于以下 HTML 模板生成交互代码。
+# JSXGraph 代码生成要求（基于模板 templates/jsxgraph_template.html）
 
-**您只需要**：
-1. 将 `REPLACE_WITH_CORRECT_FILENAME.png` 改为 `image_{question_number}.png`
-2. 在 `<script>` 标签中实现交互逻辑
-3. 保持所有中文文本不变
-
-**完整模板**：
+## HTML 结构（必须遵循）
 ```html
-{templates.get('jsxgraph', '<!-- JSXGraph 模板未找到 -->')}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Math Interactive Solution</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraph.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jsxgraph/distrib/jsxgraphcore.js"></script>
+    <style>
+        /* 双栏布局样式 */
+        .left-panel {{ /* 显示原题图片 */ }}
+        .right-panel {{ /* JSXGraph 画板 */ }}
+    </style>
+</head>
+<body>
+    <div class="header">Math Interactive Playground</div>
+    <div class="layout-container">
+        <div class="left-panel">
+            <h3>Original Problem</h3>
+            <img src="image_{question_number}.png" alt="Problem Image" class="problem-img">
+        </div>
+        <div class="right-panel">
+            <div class="instruction">交互演示：请尝试操作下方的图形以探索解题逻辑</div>
+            <div id="jxgbox"></div>
+        </div>
+    </div>
+    <script>
+        var board = JXG.JSXGraph.initBoard('jxgbox', {{
+            boundingbox: [-5, 5, 5, -5],
+            axis: true
+        }});
+
+        // 在此实现交互逻辑
+    </script>
+</body>
+</html>
 ```
+
+## 关键要求
+1. **图片路径**: `src="image_{question_number}.png"`
+2. **保持中文**: 所有说明文字保持中文
+3. **交互逻辑**: 基于解题步骤实现
 
 ---
 
 # 重要提醒
-1. **必须使用上述模板**：不要从头编写代码，而是基于模板修改
-2. **保留所有模板功能**：颜色、布局、TTS、封面等所有功能都已在模板中定义
-3. **只修改必要部分**：类名、文件名、数据定义、动画逻辑
-4. **严格遵循布局规范**：动画必须在 POS_ANIM_CENTER 位置，不得遮挡文字区域
+- 请参考上述模板结构生成**完整可运行**的代码
+- Manim 代码必须包含所有辅助方法（从模板复制）
+- 严格遵循布局和文件名规范
 """
 
     return full_prompt
 
 
-def parse_response(response: str) -> tuple[str, str, str]:
+def ensure_complete_manim_code(python_code: str, template_code: str) -> str:
+    """
+    确保生成的 Manim 代码包含所有必要的辅助方法
+    如果缺少，从模板中注入
+
+    Args:
+        python_code: Claude 生成的代码
+        template_code: 完整的模板代码
+
+    Returns:
+        完整的代码
+    """
+    # 检查是否包含关键的辅助方法
+    required_methods = [
+        'def generate_audio_file(',
+        'def prepare_all_audio(',
+        'def play_rolling_step_text(',
+        'def show_cover_phase(',
+        'def transition_to_solution_phase(',
+        'def safe_read_problem(',
+        'def show_final_answer('
+    ]
+
+    missing_methods = [m for m in required_methods if m not in python_code]
+
+    if not missing_methods:
+        # 代码已完整
+        return python_code
+
+    # 代码不完整，需要从模板中提取并合并
+    print(f"  ⚠️  检测到生成的代码缺少 {len(missing_methods)} 个辅助方法，正在从模板补充...")
+
+    # 提取模板中的 SolutionVideoTEMPLATE 类
+    template_class_pattern = r'(class SolutionVideoTEMPLATE\(Scene\):.*?)(?=\n\nclass |\Z)'
+    template_class_match = re.search(template_class_pattern, template_code, re.DOTALL)
+
+    if not template_class_match:
+        print("  ⚠️  警告：无法从模板中提取类定义")
+        return python_code
+
+    template_class_code = template_class_match.group(1)
+
+    # 提取生成代码中的 construct 和 play_visual_reasoning 方法
+    construct_pattern = r'(    def construct\(self\):.*?)(?=\n    def |\Z)'
+    construct_match = re.search(construct_pattern, python_code, re.DOTALL)
+
+    visual_pattern = r'(    def play_visual_reasoning\(self, steps\):.*?)(?=\n    def |\Z)'
+    visual_match = re.search(visual_pattern, python_code, re.DOTALL)
+
+    if construct_match and visual_match:
+        # 将生成的方法替换到模板中
+        result_code = template_class_code
+        result_code = re.sub(
+            r'    def construct\(self\):.*?(?=\n    def )',
+            construct_match.group(1) + '\n',
+            result_code,
+            flags=re.DOTALL
+        )
+        result_code = re.sub(
+            r'    def play_visual_reasoning\(self, steps\):.*?(?=\n    def )',
+            visual_match.group(1) + '\n',
+            result_code,
+            flags=re.DOTALL
+        )
+
+        # 提取模板头部（imports 和全局配置）
+        template_header_pattern = r'^(.*?)(?=class SolutionVideoTEMPLATE)'
+        template_header_match = re.search(template_header_pattern, template_code, re.DOTALL)
+        template_header = template_header_match.group(1) if template_header_match else ""
+
+        # 组合完整代码
+        return template_header + result_code
+    else:
+        print("  ⚠️  警告：无法提取生成代码的方法，返回原始代码")
+        return python_code
+
+
+def parse_response(response: str, template_code: str = "") -> tuple[str, str, str]:
     """
     解析Claude响应，分离Markdown解题步骤、Python代码和HTML代码
 
     Args:
         response: Claude的完整响应
+        template_code: Manim 模板代码（用于补全）
 
     Returns:
         (markdown_content, python_code, html_code) 元组
@@ -199,6 +377,10 @@ def parse_response(response: str) -> tuple[str, str, str]:
         solution_match = re.search(solution_pattern, response, re.DOTALL)
         if solution_match:
             python_code = solution_match.group(1)
+
+    # 确保代码完整（包含所有辅助方法）
+    if python_code and template_code:
+        python_code = ensure_complete_manim_code(python_code, template_code)
 
     # 提取 HTML 代码块（JSXGraph）
     html_pattern = r'```html\n(.*?)```'
@@ -292,7 +474,7 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
         print(f"题号: {get_question_number(image_name)}")
 
         # 调用Claude API
-        print("正在调用 Claude 4 Sonnet API（包含完整模板）...")
+        print("正在调用 Claude 4 Sonnet API（轻量级 prompt，避免 Connection error）...")
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
             max_tokens=16000,  # 增加 token 限制以容纳更长的响应
@@ -321,7 +503,11 @@ def solve_math_problem(client: anthropic.Anthropic, image_path: str, prompt: str
         response_text = message.content[0].text
 
         # 解析响应，分离Markdown、Python代码和HTML代码
-        markdown_content, python_code, html_code = parse_response(response_text)
+        # 传递模板代码以便后处理时补全缺失的辅助方法
+        markdown_content, python_code, html_code = parse_response(
+            response_text,
+            templates.get('manim', '')
+        )
 
         return {
             "success": True,
@@ -432,7 +618,7 @@ def main():
     主函数
     """
     print("=" * 60)
-    print("数学解题系统 - 基于模板的代码生成")
+    print("数学解题系统 - 智能模板代码生成")
     print("=" * 60)
 
     try:
