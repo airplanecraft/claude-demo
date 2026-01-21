@@ -167,7 +167,9 @@ POS_TEXT_BASE = [3.5, -3.0, 0]   # 文字区域（右下）
 ```python
 class SolutionVideo{question_number}(Scene):
     def construct(self):
-        self.problem_image_name = "image_{question_number}.png"
+        self.problem_image_name = os.path.join(PROBLEM_IMAGE_DIR, "image_{question_number}.png")
+        self.question_label_text = "Q"
+        self.question_label_color = "#FFD700"
         self.text_lines_group = VGroup()
 
         # 定义数据
@@ -177,7 +179,7 @@ class SolutionVideo{question_number}(Scene):
 
         prepare_all_audio(problem_data, steps_data)
 
-        # 执行流程
+        # 执行流程（请勿修改）
         cover_objects = self.show_cover_phase()
         video_img_obj = self.transition_to_solution_phase(cover_objects)
         self.safe_read_problem(problem_data, video_img_obj)
@@ -185,32 +187,66 @@ class SolutionVideo{question_number}(Scene):
         self.show_final_answer(final_answer_text)
 
     def play_visual_reasoning(self, steps):
-        # 您需要实现的动画逻辑
-        # 所有动画对象必须位于 POS_ANIM_CENTER
-        for step in steps:
+        # ⭐ 您只需要在这里编写动画逻辑！
+        # 所有动画对象必须使用 .move_to(POS_ANIM_CENTER) 定位
+        for i, step in enumerate(steps):
             self.play_rolling_step_text(step)
-            # 添加您的动画代码
+            # 在这里添加您的动画代码
+            # 例如：
+            # if i == 0:
+            #     circle = Circle().move_to(POS_ANIM_CENTER)
+            #     self.play(Create(circle))
 
-    # 以下方法已在模板中定义，直接复制即可：
-    # - play_rolling_step_text()
-    # - show_cover_phase()
-    # - transition_to_solution_phase()
-    # - safe_read_problem()
-    # - show_final_answer()
+    # ⚠️ 以下方法必须从模板原样复制，不要修改任何内容：
+    # - play_rolling_step_text(self, step)
+    # - show_cover_phase(self)
+    # - transition_to_solution_phase(self, cover_objects)
+    # - safe_read_problem(self, problem_data, video_img_obj)
+    # - show_final_answer(self, answer_text)
 ```
 
 ## 关键要求
 1. **类名**: `SolutionVideo{question_number}`
-2. **图片文件名**: `image_{question_number}.png`
+2. **图片文件名**: 使用 `os.path.join(PROBLEM_IMAGE_DIR, "image_{question_number}.png")`
 3. **布局规范**: 动画在 `POS_ANIM_CENTER`，不遮挡下方文字
-4. **包含所有辅助方法**: show_cover_phase, transition_to_solution_phase 等
+4. **包含所有辅助方法**: 从模板原样复制所有辅助方法
 5. **TTS 支持**: 使用 edge_tts 和 Mac say 命令
 
 ---
 
-# 重要提醒
-- 请参考上述模板结构生成**完整可运行**的 Manim 代码
-- 必须包含所有辅助方法（从模板复制）
+# ⚠️ 严重警告 - 请务必遵守！
+
+## 不要修改以下辅助方法：
+模板中的以下方法已经完整实现，包含复杂的布局和音频处理逻辑。
+如果修改这些方法会导致：
+- 视频布局错乱（原题和动画重叠）
+- 运行时错误（VGroup 类型错误）
+- 音频播放问题（声音重叠或截断）
+
+**必须从模板原样复制的方法：**
+1. `show_cover_phase()` - 封面显示
+2. `transition_to_solution_phase()` - 过渡到解题界面
+3. `safe_read_problem()` - 读题
+4. `play_rolling_step_text()` - 显示解题步骤（三行滚动）
+5. `show_final_answer()` - 显示最终答案
+
+## 您只需要做的事情：
+✅ 在 `play_visual_reasoning()` 方法中编写动画代码
+✅ 为每个步骤调用 `self.play_rolling_step_text(step)`
+✅ 使用 `.move_to(POS_ANIM_CENTER)` 定位动画对象
+✅ 填充 problem_data, steps_data, final_answer_text 数据
+
+## 不要做的事情：
+❌ 不要重写 show_cover_phase() 方法
+❌ 不要修改 play_rolling_step_text() 的实现
+❌ 不要更改辅助方法的返回值类型
+❌ 不要在辅助方法中使用 VGroup 包含 ImageMobject
+
+---
+
+# 代码生成要求
+- 生成**完整可运行**的 Manim 代码
+- 从模板**原样复制**所有辅助方法和辅助函数
 - 严格遵循布局和文件名规范
 - 输出完整的 Python 代码，包含所有必要的 imports、配置和方法
 """

@@ -215,6 +215,17 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
 
     # --- 🛠️ 滚动文字与字幕 (已支持中文公式) ---
     def play_rolling_step_text(self, step):
+        """
+        显示单个解题步骤（三行滚动显示）
+        - 旧步骤向上滚动
+        - 新步骤从底部淡入
+        - 显示底部字幕
+        - 播放语音（自动等待音频播放完毕）
+
+        参数：step - 包含 text, math, speech, audio_path 的字典
+
+        ⚠️ AI 请勿修改此方法！直接在 play_visual_reasoning() 中调用即可
+        """
         audio_path = step.get("audio_path")
         new_line = VGroup()
         if step["text"]:
@@ -265,8 +276,25 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
 
         self.play(FadeOut(sub_group), run_time=0.3)
 
-    # --- 辅助方法 (无需修改) ---
+    # ==============================================================================
+    # ⚠️  以下辅助方法已完整实现，AI 严禁修改！
+    # ==============================================================================
+    # 这些方法处理封面显示、过渡、读题、答案显示等核心功能
+    # AI 只需要在 play_visual_reasoning() 方法中编写动画逻辑即可
+    # 如果修改这些方法会导致视频布局错误或运行失败
+    # ==============================================================================
+
     def show_cover_phase(self):
+        """
+        显示封面阶段（3秒）
+        - 背景：cover.png 全屏显示
+        - 中央：原题图片 + 题号标签
+        - 底部：比赛信息文字
+
+        返回：字典 {"bg": cover_bg_object} 用于后续过渡
+
+        ⚠️ AI 请勿修改此方法！
+        """
         if os.path.exists(COVER_BG_IMAGE):
             cover_bg = ImageMobject(COVER_BG_IMAGE).stretch_to_fit_width(config.frame_width).stretch_to_fit_height(config.frame_height)
             cover_bg.z_index = -10
@@ -286,6 +314,17 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         return {"bg": cover_bg if os.path.exists(COVER_BG_IMAGE) else None}
 
     def transition_to_solution_phase(self, cover_objects):
+        """
+        过渡到解题阶段
+        - 设置背景色和网格
+        - 显示分割线、Logo、原题图片
+        - 淡出封面，淡入解题界面
+
+        参数：cover_objects - show_cover_phase() 返回的字典
+        返回：原题图片对象（用于高亮显示）
+
+        ⚠️ AI 请勿修改此方法！
+        """
         self.camera.background_color = COLOR_BG
         grid = NumberPlane(x_range=[-8, 8, 1], y_range=[-5, 5, 1], background_line_style={"stroke_color": COLOR_GRID, "stroke_width": 2, "stroke_opacity": 0.5}, axis_config={"stroke_width": 0})
         separator = Line(start=UP * 4, end=DOWN * 4, color=COLOR_SEPARATOR, stroke_width=2).move_to([SEPARATOR_X, 0, 0])
@@ -305,6 +344,18 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         return target_img
 
     def safe_read_problem(self, problem_data, video_img_obj):
+        """
+        读题阶段
+        - 高亮原题图片
+        - 显示底部字幕
+        - 播放读题语音
+
+        参数：
+            problem_data - 包含 speech 和 audio_path 的字典
+            video_img_obj - 原题图片对象（用于高亮）
+
+        ⚠️ AI 请勿修改此方法！
+        """
         text = problem_data["speech"]
         audio_path = problem_data.get("audio_path")
         sub_text = Text(text, font=FONT_NAME, font_size=FONT_SIZE_SUB, color=COLOR_SUBTITLE)
@@ -330,6 +381,16 @@ class SolutionVideoTEMPLATE(Scene): # AI: 请修改类名，例如 SolutionVideo
         self.play(FadeOut(sub_group), FadeOut(highlight), run_time=0.5)
 
     def show_final_answer(self, answer_text):
+        """
+        显示最终答案
+        - 在左侧原题下方显示答案
+        - 添加高亮边框
+        - 停留3秒
+
+        参数：answer_text - 答案文字字符串
+
+        ⚠️ AI 请勿修改此方法！
+        """
         ans_text = Text(answer_text, font=FONT_NAME, font_size=40, color=COLOR_HIGHLIGHT)
         ans_text.move_to([VIDEO_LEFT_PANEL_X, -3.2, 0])
         ans_box = SurroundingRectangle(ans_text, color=COLOR_HIGHLIGHT, buff=0.2)
