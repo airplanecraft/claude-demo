@@ -24,4 +24,5 @@ media/
 .DS_Store
 #cloude env
 claudevenv/
-cloudeenv/
+claudeenv/
+*.mp3
