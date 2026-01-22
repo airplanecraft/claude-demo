@@ -27,4 +27,6 @@ claudevenv/
 claudeenv/
 *.mp3
 output/*
+output/
 audio/
+run.log
