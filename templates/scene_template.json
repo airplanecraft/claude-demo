@@ -1,0 +1,133 @@
+{
+  "scene_id": "problem_N_solution",
+  "metadata": {
+    "title": "QN: [题目标题]",
+    "problem_image": "image_N.png",
+    "resolution": "1080p",
+    "frame_rate": 60,
+    "theme": "dark"
+  },
+  "timeline": [
+    {
+      "phase_id": "cover",
+      "type": "cover",
+      "animations": [
+        {
+          "anim_id": "show_cover_bg",
+          "type": "fade_in",
+          "target": "cover_background",
+          "params": {
+            "image": "assets/cover.png"
+          },
+          "duration": 0.5
+        },
+        {
+          "anim_id": "show_logo",
+          "type": "fade_in",
+          "target": "logo",
+          "params": {
+            "image": "assets/logo.png",
+            "position": [-6.4, 3.4, 0],
+            "scale_factor": 0.15
+          },
+          "duration": 0.5
+        },
+        {
+          "anim_id": "show_problem_center",
+          "type": "show_image",
+          "target": "problem_center",
+          "params": {
+            "image": "input/images/image_N.png",
+            "width": 4.0,
+            "height": 3.0,
+            "position": [0, -0.8, 0]
+          },
+          "duration": 1.0
+        },
+        {
+          "anim_id": "show_title",
+          "type": "show_text",
+          "target": "title",
+          "params": {
+            "text": "2025香港袋鼠数学竞赛中学中年级组",
+            "position": [0, -3.5, 0],
+            "font_size": 48,
+            "color": "#333333"
+          },
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "phase_id": "problem_reading",
+      "type": "problem_reading",
+      "audio": {
+        "text": "[读题内容]",
+        "voice": "zh-CN-XiaoxiaoNeural",
+        "rate": "+10%"
+      },
+      "animations": [
+        {
+          "anim_id": "transition_problem_left",
+          "type": "move_to",
+          "target": "problem_center",
+          "params": {
+            "position": [-3.5, 0.5, 0],
+            "width": 5.5
+          },
+          "duration": 1.0
+        },
+        {
+          "anim_id": "highlight_problem",
+          "type": "highlight",
+          "target": "problem_left",
+          "params": {
+            "color": "#FFD700",
+            "stroke_width": 4
+          },
+          "duration": 0.5
+        }
+      ]
+    },
+    {
+      "phase_id": "step_1",
+      "type": "solution_steps",
+      "audio": {
+        "text": "[步骤1语音]"
+      },
+      "animations": [
+        {
+          "anim_id": "show_step_text_1",
+          "type": "show_text",
+          "target": "step_text_1",
+          "params": {
+            "text": "步骤1：[步骤描述]",
+            "position": [3.5, -3.0, 0],
+            "font_size": 24,
+            "color": "#FFD700"
+          },
+          "duration": 0.6
+        }
+      ]
+    },
+    {
+      "phase_id": "final_answer",
+      "type": "final_answer",
+      "animations": [
+        {
+          "anim_id": "show_answer",
+          "type": "show_text",
+          "target": "answer_box",
+          "params": {
+            "text": "答案：[最终答案]",
+            "position": [-3.5, -3.2, 0],
+            "font_size": 40,
+            "color": "#FFD700",
+            "box": true
+          },
+          "duration": 1.0
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Manim Animation DSL",
+  "description": "声明式 Manim 动画描述语言",
+  "type": "object",
+  "required": ["scene_id", "metadata", "timeline"],
+  "properties": {
+    "scene_id": {
+      "type": "string",
+      "description": "场景唯一标识符",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["title", "problem_image"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "场景标题"
+        },
+        "problem_image": {
+          "type": "string",
+          "description": "题目图片文件名"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": ["1080p", "720p", "4k"],
+          "default": "1080p"
+        },
+        "frame_rate": {
+          "type": "integer",
+          "enum": [30, 60],
+          "default": 60
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"],
+          "default": "dark"
+        }
+      }
+    },
+    "timeline": {
+      "type": "array",
+      "description": "时间轴上的所有阶段",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/Phase"
+      }
+    }
+  },
+  "definitions": {
+    "Phase": {
+      "type": "object",
+      "required": ["phase_id", "type", "animations"],
+      "properties": {
+        "phase_id": {
+          "type": "string",
+          "description": "阶段标识符",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["cover", "problem_reading", "solution_steps", "final_answer"],
+          "description": "阶段类型"
+        },
+        "audio": {
+          "$ref": "#/definitions/Audio"
+        },
+        "animations": {
+          "type": "array",
+          "minItems": 0,
+          "items": {
+            "$ref": "#/definitions/Animation"
+          }
+        }
+      }
+    },
+    "Audio": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "语音文本",
+          "minLength": 1
+        },
+        "voice": {
+          "type": "string",
+          "enum": [
+            "zh-CN-XiaoxiaoNeural",
+            "zh-CN-YunxiNeural",
+            "zh-CN-YunjianNeural",
+            "zh-CN-XiaoyiNeural"
+          ],
+          "default": "zh-CN-XiaoxiaoNeural"
+        },
+        "rate": {
+          "type": "string",
+          "default": "+10%",
+          "pattern": "^[+-]\\d+%$"
+        }
+      }
+    },
+    "Animation": {
+      "type": "object",
+      "required": ["anim_id", "type", "target"],
+      "properties": {
+        "anim_id": {
+          "type": "string",
+          "description": "动画唯一标识符",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "create",
+            "write",
+            "fade_in",
+            "fade_out",
+            "transform",
+            "move_to",
+            "scale",
+            "rotate",
+            "highlight",
+            "indicate",
+            "show_text",
+            "show_math",
+            "show_image"
+          ],
+          "description": "动画类型"
+        },
+        "target": {
+          "type": "string",
+          "description": "动画目标（对象ID）"
+        },
+        "params": {
+          "type": "object",
+          "description": "动画参数（根据type不同而不同）",
+          "properties": {
+            "text": {"type": "string"},
+            "latex": {"type": "string"},
+            "image": {"type": "string"},
+            "position": {
+              "type": "array",
+              "items": {"type": "number"},
+              "minItems": 3,
+              "maxItems": 3
+            },
+            "color": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "font_size": {
+              "type": "number",
+              "minimum": 1
+            },
+            "stroke_width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "width": {"type": "number", "minimum": 0},
+            "height": {"type": "number", "minimum": 0},
+            "scale_factor": {"type": "number", "minimum": 0},
+            "angle": {"type": "number"},
+            "box": {"type": "boolean"}
+          }
+        },
+        "duration": {
+          "type": "number",
+          "default": 1.0,
+          "minimum": 0.1,
+          "maximum": 30.0
+        },
+        "parallel": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "与此动画并行执行的其他动画ID"
+        }
+      }
+    }
+  }
+}
