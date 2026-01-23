@@ -1,0 +1,562 @@
+# 第三阶段：Animation DSL 生成
+
+## 任务
+基于解题步骤，生成结构化的 **Animation DSL (JSON格式)**，而不是 Python 代码。
+
+## 核心理念 🎯
+- **LLM 的职责**: 理解题目，规划动画流程，生成声明式的 DSL
+- **Renderer 的职责**: 将 DSL 转换为 Manim 代码并渲染视频
+- **优势**: 确定性（同样的 DSL = 同样的视频）、可验证（渲染前检查）
+
+---
+
+## Animation DSL 结构
+
+### 完整 Schema
+
+```json
+{
+  "scene_id": "problem_N_solution",
+  "metadata": {
+    "title": "QN: 题目标题",
+    "problem_image": "image_N.png",
+    "resolution": "1080p",
+    "frame_rate": 60,
+    "theme": "dark"
+  },
+  "timeline": [
+    {
+      "phase_id": "phase_name",
+      "type": "cover | problem_reading | solution_steps | final_answer",
+      "audio": {
+        "text": "语音文本",
+        "voice": "zh-CN-XiaoxiaoNeural",
+        "rate": "+10%"
+      },
+      "animations": [
+        {
+          "anim_id": "unique_id",
+          "type": "动画类型",
+          "target": "对象名称",
+          "params": {...},
+          "duration": 1.0
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 支持的动画类型 📐
+
+### 1. 文字显示 (show_text)
+**用途**: 显示步骤描述、答案等文字
+
+```json
+{
+  "anim_id": "show_step_1",
+  "type": "show_text",
+  "target": "step_text_1",
+  "params": {
+    "text": "步骤1：找出规律",
+    "position": [3.5, -3.0, 0],
+    "font_size": 24,
+    "color": "#FFD700",
+    "box": false
+  },
+  "duration": 0.6
+}
+```
+
+**参数说明**:
+- `text`: 要显示的文字（支持中文）
+- `position`: [x, y, z] 坐标
+- `font_size`: 字体大小（默认 24）
+- `color`: 颜色（十六进制，如 "#FFD700"）
+- `box`: 是否添加边框（默认 false）
+
+### 2. 数学公式 (show_math)
+**用途**: 显示 LaTeX 数学公式
+
+```json
+{
+  "anim_id": "show_formula",
+  "type": "show_math",
+  "target": "formula_1",
+  "params": {
+    "latex": "S_n = \\frac{n(n+1)}{2}",
+    "position": [3.5, 2.0, 0],
+    "font_size": 32,
+    "color": "#FFFFFF"
+  },
+  "duration": 1.5
+}
+```
+
+**LaTeX 注意事项**:
+- 使用双反斜杠 `\\` 而不是单反斜杠
+- 支持所有标准 LaTeX 数学符号
+- 示例：`S_n = \\frac{n(n+1)}{2}`, `x^2 + y^2 = r^2`
+
+### 3. 图片显示 (show_image)
+**用途**: 显示题目图片、Logo 等
+
+```json
+{
+  "anim_id": "show_problem",
+  "type": "show_image",
+  "target": "problem_center",
+  "params": {
+    "image": "input/images/image_1.png",
+    "width": 4.0,
+    "height": 3.0,
+    "position": [0, -0.8, 0]
+  },
+  "duration": 1.0
+}
+```
+
+**参数说明**:
+- `image`: 图片路径
+- `width`, `height`: 可选，指定显示尺寸
+- `scale_factor`: 可选，缩放因子（例如 0.15）
+
+### 4. 淡入/淡出 (fade_in / fade_out)
+**用途**: 平滑的出现/消失效果
+
+```json
+{
+  "anim_id": "fade_old_text",
+  "type": "fade_out",
+  "target": "step_text_1",
+  "params": {},
+  "duration": 0.3
+}
+```
+
+### 5. 移动动画 (move_to)
+**用途**: 移动对象到新位置
+
+```json
+{
+  "anim_id": "move_problem_left",
+  "type": "move_to",
+  "target": "problem_center",
+  "params": {
+    "position": [-3.5, 0.5, 0],
+    "width": 5.5
+  },
+  "duration": 1.0
+}
+```
+
+### 6. 高亮边框 (highlight)
+**用途**: 强调重要内容
+
+```json
+{
+  "anim_id": "highlight_problem",
+  "type": "highlight",
+  "target": "problem_center",
+  "params": {
+    "color": "#FFD700",
+    "stroke_width": 4
+  },
+  "duration": 0.5
+}
+```
+
+### 7. 其他动画类型
+- `scale`: 缩放动画
+- `rotate`: 旋转动画
+- `indicate`: 指示动画
+- `create`: 创建动画（用于几何图形）
+- `write`: 书写动画
+- `transform`: 变换动画
+
+---
+
+## 布局约束 (CRITICAL) ⚠️
+
+### 屏幕布局
+```
+┌─────────────────────────────────────────┐
+│ Logo                                    │
+│  ┌──────────┐     ┌──────────────────┐ │
+│  │          │     │                  │ │
+│  │  原题    │     │   动画区域       │ │
+│  │  图片    │     │  (右上方)        │ │
+│  │ (左侧)   │     │ POS_ANIM_CENTER  │ │
+│  │          │     │  [3.5, 2.0, 0]   │ │
+│  └──────────┘     └──────────────────┘ │
+│                   ┌──────────────────┐ │
+│                   │  步骤文字        │ │
+│                   │  (右下方)        │ │
+│                   │ POS_TEXT_BASE    │ │
+│                   │  [3.5, -3.0, 0]  │ │
+│                   └──────────────────┘ │
+│            字幕区域 (底部)              │
+└─────────────────────────────────────────┘
+```
+
+### 关键位置常量
+- **POS_ANIM_CENTER** = `[3.5, 2.0, 0]` - 动画区域中心（右上方）
+- **POS_TEXT_BASE** = `[3.5, -3.0, 0]` - 文字区域基准点（右下方）
+- **VIDEO_LEFT_PANEL_X** = `-3.5` - 题目图片中心（左侧）
+
+### 布局规则 (必须遵守)
+1. ✅ **动画对象** 必须位于右上方区域 `position: [3.5, 2.0, 0]` 附近
+2. ✅ **步骤文字** 必须位于右下方区域 `position: [3.5, -3.0, 0]`
+3. ✅ **原题图片** 必须位于左侧 `position: [-3.5, 0.5, 0]`
+4. ❌ **严禁** 动画对象底部低于 Y=0（会遮挡文字）
+5. ❌ **严禁** 动画对象超出右侧区域（X > 7.0）
+
+---
+
+## 标准阶段 (Phases) 🎬
+
+### Phase 1: cover (封面)
+**时长**: 3秒
+
+```json
+{
+  "phase_id": "cover",
+  "type": "cover",
+  "animations": [
+    {
+      "anim_id": "show_cover_bg",
+      "type": "fade_in",
+      "target": "cover_background",
+      "params": {"image": "assets/cover.png"},
+      "duration": 0.5
+    },
+    {
+      "anim_id": "show_logo",
+      "type": "fade_in",
+      "target": "logo",
+      "params": {
+        "image": "assets/logo.png",
+        "position": [-6.4, 3.4, 0],
+        "scale_factor": 0.15
+      },
+      "duration": 0.5
+    },
+    {
+      "anim_id": "show_problem_center",
+      "type": "show_image",
+      "target": "problem_center",
+      "params": {
+        "image": "input/images/image_N.png",
+        "width": 4.0,
+        "height": 3.0,
+        "position": [0, -0.8, 0]
+      },
+      "duration": 1.0
+    },
+    {
+      "anim_id": "show_title",
+      "type": "show_text",
+      "target": "title",
+      "params": {
+        "text": "2025香港袋鼠数学竞赛中学中年级组",
+        "position": [0, -3.5, 0],
+        "font_size": 48,
+        "color": "#333333"
+      },
+      "duration": 1.0
+    }
+  ]
+}
+```
+
+### Phase 2: problem_reading (读题)
+**要点**: 添加 audio，高亮题目
+
+```json
+{
+  "phase_id": "problem_reading",
+  "type": "problem_reading",
+  "audio": {
+    "text": "题目要求：...",
+    "voice": "zh-CN-XiaoxiaoNeural",
+    "rate": "+10%"
+  },
+  "animations": [
+    {
+      "anim_id": "transition_problem_left",
+      "type": "move_to",
+      "target": "problem_center",
+      "params": {
+        "position": [-3.5, 0.5, 0],
+        "width": 5.5
+      },
+      "duration": 1.0
+    },
+    {
+      "anim_id": "highlight_problem",
+      "type": "highlight",
+      "target": "problem_center",
+      "params": {
+        "color": "#FFD700",
+        "stroke_width": 4
+      },
+      "duration": 0.5
+    }
+  ]
+}
+```
+
+### Phase 3-N: solution_steps (解题步骤)
+**要点**: 每个步骤一个 phase，包含文字、公式、动画
+
+```json
+{
+  "phase_id": "step_1",
+  "type": "solution_steps",
+  "audio": {
+    "text": "步骤一：我们首先..."
+  },
+  "animations": [
+    {
+      "anim_id": "show_step_text_1",
+      "type": "show_text",
+      "target": "step_text_1",
+      "params": {
+        "text": "步骤1：找出规律",
+        "position": [3.5, -3.0, 0],
+        "font_size": 24,
+        "color": "#FFD700"
+      },
+      "duration": 0.6
+    },
+    {
+      "anim_id": "show_formula_1",
+      "type": "show_math",
+      "target": "formula_1",
+      "params": {
+        "latex": "a_n = a_1 + (n-1)d",
+        "position": [3.5, 2.0, 0],
+        "font_size": 32,
+        "color": "#FFFFFF"
+      },
+      "duration": 1.5
+    }
+  ]
+}
+```
+
+### 最后 Phase: final_answer (最终答案)
+```json
+{
+  "phase_id": "final_answer",
+  "type": "final_answer",
+  "animations": [
+    {
+      "anim_id": "show_answer",
+      "type": "show_text",
+      "target": "answer_box",
+      "params": {
+        "text": "答案：B",
+        "position": [-3.5, -3.2, 0],
+        "font_size": 40,
+        "color": "#FFD700",
+        "box": true
+      },
+      "duration": 1.0
+    }
+  ]
+}
+```
+
+---
+
+## 完整示例 (高斯求和问题) 📝
+
+```json
+{
+  "scene_id": "problem_1_solution",
+  "metadata": {
+    "title": "Q1: 高斯求和问题",
+    "problem_image": "image_1.png",
+    "resolution": "1080p",
+    "frame_rate": 60,
+    "theme": "dark"
+  },
+  "timeline": [
+    {
+      "phase_id": "cover",
+      "type": "cover",
+      "animations": [
+        {
+          "anim_id": "show_cover_bg",
+          "type": "fade_in",
+          "target": "cover_background",
+          "params": {"image": "assets/cover.png"},
+          "duration": 0.5
+        },
+        {
+          "anim_id": "show_problem_center",
+          "type": "show_image",
+          "target": "problem_center",
+          "params": {
+            "image": "input/images/image_1.png",
+            "width": 4.0,
+            "height": 3.0,
+            "position": [0, -0.8, 0]
+          },
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "phase_id": "problem_reading",
+      "type": "problem_reading",
+      "audio": {
+        "text": "题目要求：计算从1加到100的和"
+      },
+      "animations": [
+        {
+          "anim_id": "transition_problem_left",
+          "type": "move_to",
+          "target": "problem_center",
+          "params": {
+            "position": [-3.5, 0.5, 0],
+            "width": 5.5
+          },
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "phase_id": "step_1",
+      "type": "solution_steps",
+      "audio": {
+        "text": "步骤一：利用高斯求和公式"
+      },
+      "animations": [
+        {
+          "anim_id": "show_step_text_1",
+          "type": "show_text",
+          "target": "step_text_1",
+          "params": {
+            "text": "步骤1：高斯求和公式",
+            "position": [3.5, -3.0, 0],
+            "font_size": 24,
+            "color": "#FFD700"
+          },
+          "duration": 0.6
+        },
+        {
+          "anim_id": "show_formula_1",
+          "type": "show_math",
+          "target": "formula_1",
+          "params": {
+            "latex": "S_n = \\frac{n(n+1)}{2}",
+            "position": [3.5, 2.0, 0],
+            "font_size": 32,
+            "color": "#FFFFFF"
+          },
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "phase_id": "final_answer",
+      "type": "final_answer",
+      "animations": [
+        {
+          "anim_id": "show_answer",
+          "type": "show_text",
+          "target": "answer_box",
+          "params": {
+            "text": "答案：5050",
+            "position": [-3.5, -3.2, 0],
+            "font_size": 40,
+            "color": "#FFD700",
+            "box": true
+          },
+          "duration": 1.0
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## 生成步骤 📋
+
+1. **分析题目**: 理解题目要求和解题思路
+2. **规划阶段**: 确定需要几个 solution_steps phases
+3. **设计动画**: 为每个步骤选择合适的动画类型
+4. **填充数据**:
+   - `scene_id`: `problem_N_solution`（N 为题号）
+   - `metadata.title`: 题目标题
+   - `metadata.problem_image`: `image_N.png`
+   - `timeline`: 所有阶段
+5. **验证布局**: 确保所有动画对象位置正确
+6. **添加语音**: 为 problem_reading 和 solution_steps 添加 audio
+
+---
+
+## 输出要求 ✅
+
+1. **输出完整的 JSON**: 从 `{` 到 `}`，确保格式正确
+2. **必需字段**: scene_id, metadata, timeline 都必须存在
+3. **唯一 ID**: 所有 anim_id 必须唯一
+4. **正确位置**: 严格遵守布局约束
+5. **合理时长**: 每个动画 duration 要合理（0.3-3.0秒）
+6. **LaTeX 格式**: 使用双反斜杠 `\\`
+
+---
+
+## 常见错误 ⚠️
+
+❌ **错误 1**: 动画位置错误
+```json
+// 错误：动画在左侧
+"position": [-3.5, 2.0, 0]
+```
+✅ **正确**:
+```json
+// 正确：动画在右上方
+"position": [3.5, 2.0, 0]
+```
+
+❌ **错误 2**: LaTeX 单反斜杠
+```json
+"latex": "S_n = \frac{n}{2}"  // 错误
+```
+✅ **正确**:
+```json
+"latex": "S_n = \\frac{n}{2}"  // 正确
+```
+
+❌ **错误 3**: 缺少必需字段
+```json
+{
+  "scene_id": "problem_1",
+  // 缺少 metadata 和 timeline
+}
+```
+
+---
+
+## 工具调用流程 🔧
+
+生成 DSL 后，使用 MCP Tools：
+
+1. **create_scene**: 验证并保存 DSL
+2. **validate_scene**: 预检查（可选）
+3. **render_scene**: 渲染视频
+
+---
+
+## 参考资料 📚
+
+- **完整示例**: `manim_mcp/dsl/examples/simple_solution.json`
+- **DSL Schema**: `manim_mcp/dsl/schema.json`
+- **DSL 模板**: `templates/scene_template.json`

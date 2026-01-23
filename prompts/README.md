@@ -12,7 +12,8 @@ prompts/
 ├── stage0_master.txt              # 主 prompt（概览）
 ├── stage1_visual_strategy.txt     # 第一阶段：视觉策略决策
 ├── stage2_math_solution.txt       # 第二阶段：数学求解
-├── stage3_manim.txt              # 第三阶段：Manim 视频代码生成
+├── stage3_dsl_generation.txt      # 第三阶段：Animation DSL 生成
+├── stage3_manim.txt              # (已弃用) 旧版 Python 代码生成
 └── stage4_jsxgraph.txt           # 第四阶段：JSXGraph 交互代码生成
 ```
 
@@ -43,18 +44,23 @@ prompts/
 
 **重要**: 后续的 Manim 动画和 JSXGraph 交互都基于此步骤。
 
-### 第三阶段：Manim 视频代码生成
-**文件**: `stage3_manim.txt`
+### 第三阶段：Animation DSL 生成
+**文件**: `stage3_dsl_generation.txt`
 
-**目的**: 基于模板生成完整的 Manim 动画代码。
+**目的**: 生成结构化的 Animation DSL (JSON格式)，描述完整的动画场景。
 
 **核心要求**:
-- 高清画质 (1080p @ 60fps)
-- 布局防重叠（动画在右上，文字在右下）
-- 文件名规则 (`image_{题号}.png`)
-- 类名规则 (`SolutionVideo{题号}`)
+- 使用声明式 JSON 格式描述场景
+- 支持 13 种动画类型（show_text, show_math, fade_in, move_to 等）
+- 标准化布局（POS_ANIM_CENTER, POS_TEXT_BASE）
+- 场景 ID 规则 (`problem_{题号}_solution`)
 
-**模板位置**: `../templates/manim_template.py`
+**处理流程**:
+- Animation DSL (JSON) → create_scene → validate_scene → render_scene → 视频输出
+- 通过 MCP Tools 自动验证、转换和渲染
+- 高清画质 (720p@60fps 默认，支持 480p/1080p)
+
+**DSL Schema**: `../manim_mcp/dsl/schema.json`
 
 ### 第四阶段：JSXGraph 交互代码生成
 **文件**: `stage4_jsxgraph.txt`
@@ -92,10 +98,10 @@ with open('prompts/stage1_visual_strategy.txt', 'r') as f:
 可以根据需要组合不同阶段的 prompt：
 
 ```python
-# 示例：只需要数学求解和 Manim 代码
+# 示例：只需要数学求解和 DSL 生成
 math_prompt = read_file('prompts/stage2_math_solution.txt')
-manim_prompt = read_file('prompts/stage3_manim.txt')
-combined_prompt = f"{math_prompt}\n\n{manim_prompt}"
+dsl_prompt = read_file('prompts/stage3_dsl_generation.txt')
+combined_prompt = f"{math_prompt}\n\n{dsl_prompt}"
 ```
 
 ## 修改 Prompt
@@ -108,14 +114,15 @@ combined_prompt = f"{math_prompt}\n\n{manim_prompt}"
 2. 保存修改
 3. 下次运行时会自动使用新的 prompt
 
-### 修改模板
+### 修改 DSL Schema 和模板
 
-模板文件位于 `../templates/` 目录：
+DSL Schema 和模板文件位于不同目录：
 
-- `manim_template.py` - Manim 代码模板
-- `jsxgraph_template.html` - JSXGraph HTML 模板
+- `../manim_mcp/dsl/schema.json` - Animation DSL 结构定义
+- `../manim_mcp/renderer/animation_factory.py` - 动画类型生成器
+- `../templates/jsxgraph_template.html` - JSXGraph HTML 模板
 
-修改模板后，在 prompt 中引用的模板会自动更新。
+修改 DSL Schema 后，需要更新 validator 和相关工具以保持一致性。
 
 ## 最佳实践
 
@@ -183,5 +190,7 @@ combined_prompt = f"{math_prompt}\n\n{manim_prompt}"
 ## 相关文档
 
 - 项目主 README: `../README.md`
-- Manim 模板: `../templates/manim_template.py`
+- Animation DSL Schema: `../manim_mcp/dsl/schema.json`
+- DSL 示例: `../manim_mcp/dsl/examples/simple_solution.json`
+- 重构计划: `../REFACTORING_PLAN.md`
 - JSXGraph 模板: `../templates/jsxgraph_template.html`
