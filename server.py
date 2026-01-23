@@ -20,6 +20,13 @@ from tools import (
     MCP_TOOLS
 )
 
+# 导入 Manim MCP Tools
+from manim_mcp.tools import (
+    MANIM_TOOLS,
+    MANIM_TOOL_HANDLERS,
+    MANIM_TOOL_FORMATTERS
+)
+
 # 创建MCP服务器实例
 server = Server("exam-solver-mcp")
 
@@ -30,12 +37,23 @@ async def list_tools() -> list[Tool]:
     列出所有可用的工具
     """
     tools = []
+
+    # 添加原有的解题工具
     for tool_def in MCP_TOOLS:
         tools.append(Tool(
             name=tool_def["name"],
             description=tool_def["description"],
             inputSchema=tool_def["inputSchema"]
         ))
+
+    # 添加 Manim 渲染工具
+    for tool_def in MANIM_TOOLS:
+        tools.append(Tool(
+            name=tool_def["name"],
+            description=tool_def["description"],
+            inputSchema=tool_def["inputSchema"]
+        ))
+
     return tools
 
 
@@ -87,6 +105,29 @@ async def call_tool(name: str, arguments: Any) -> list[TextContent]:
                 type="text",
                 text=result
             )]
+
+        # Manim Tools
+        elif name in MANIM_TOOL_HANDLERS:
+            # 调用对应的 Manim tool handler
+            handler = MANIM_TOOL_HANDLERS[name]
+            formatter = MANIM_TOOL_FORMATTERS[name]
+
+            result = handler(**arguments)
+
+            # 格式化结果为人类可读的字符串
+            formatted_text = formatter(result)
+
+            # 同时返回格式化文本和 JSON 数据
+            return [
+                TextContent(
+                    type="text",
+                    text=formatted_text
+                ),
+                TextContent(
+                    type="text",
+                    text="\n\n[JSON Data]\n" + json.dumps(result, ensure_ascii=False, indent=2)
+                )
+            ]
 
         else:
             return [TextContent(

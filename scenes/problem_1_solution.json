@@ -1,0 +1,267 @@
+{
+  "scene_id": "problem_1_solution",
+  "metadata": {
+    "title": "Q1: 高斯求和问题",
+    "problem_image": "image_1.png",
+    "resolution": "1080p",
+    "frame_rate": 60,
+    "theme": "dark"
+  },
+  "timeline": [
+    {
+      "phase_id": "cover",
+      "type": "cover",
+      "animations": [
+        {
+          "anim_id": "show_cover_bg",
+          "type": "fade_in",
+          "target": "cover_background",
+          "params": {
+            "image": "assets/cover.png"
+          },
+          "duration": 0.5
+        },
+        {
+          "anim_id": "show_logo",
+          "type": "fade_in",
+          "target": "logo",
+          "params": {
+            "image": "assets/logo.png",
+            "position": [
+              -6.4,
+              3.4,
+              0
+            ],
+            "scale_factor": 0.15
+          },
+          "duration": 0.5
+        },
+        {
+          "anim_id": "show_problem_center",
+          "type": "show_image",
+          "target": "problem_center",
+          "params": {
+            "image": "input/images/image_1.png",
+            "width": 4.0,
+            "height": 3.0,
+            "position": [
+              0,
+              -0.8,
+              0
+            ]
+          },
+          "duration": 1.0
+        },
+        {
+          "anim_id": "show_title",
+          "type": "show_text",
+          "target": "title",
+          "params": {
+            "text": "2025香港袋鼠数学竞赛中学中年级组",
+            "position": [
+              0,
+              -3.5,
+              0
+            ],
+            "font_size": 48,
+            "color": "#333333"
+          },
+          "duration": 1.0
+        }
+      ]
+    },
+    {
+      "phase_id": "problem_reading",
+      "type": "problem_reading",
+      "audio": {
+        "text": "题目要求：计算从1加到100的和",
+        "voice": "zh-CN-XiaoxiaoNeural",
+        "rate": "+10%"
+      },
+      "animations": [
+        {
+          "anim_id": "transition_problem_left",
+          "type": "move_to",
+          "target": "problem_center",
+          "params": {
+            "position": [
+              -3.5,
+              0.5,
+              0
+            ],
+            "width": 5.5
+          },
+          "duration": 1.0
+        },
+        {
+          "anim_id": "highlight_problem",
+          "type": "highlight",
+          "target": "problem_center",
+          "params": {
+            "color": "#FFD700",
+            "stroke_width": 4
+          },
+          "duration": 0.5
+        }
+      ]
+    },
+    {
+      "phase_id": "step_1",
+      "type": "solution_steps",
+      "audio": {
+        "text": "步骤一：我们可以利用高斯求和公式来解决这个问题"
+      },
+      "animations": [
+        {
+          "anim_id": "show_step_text_1",
+          "type": "show_text",
+          "target": "step_text_1",
+          "params": {
+            "text": "步骤1：高斯求和公式",
+            "position": [
+              3.5,
+              -3.0,
+              0
+            ],
+            "font_size": 24,
+            "color": "#FFD700"
+          },
+          "duration": 0.6
+        },
+        {
+          "anim_id": "show_formula_1",
+          "type": "show_math",
+          "target": "formula_1",
+          "params": {
+            "latex": "S_n = \\frac{n(n+1)}{2}",
+            "position": [
+              3.5,
+              2.0,
+              0
+            ],
+            "font_size": 32,
+            "color": "#FFFFFF"
+          },
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "phase_id": "step_2",
+      "type": "solution_steps",
+      "audio": {
+        "text": "步骤二：将n等于100代入公式"
+      },
+      "animations": [
+        {
+          "anim_id": "fade_out_step_1",
+          "type": "fade_out",
+          "target": "step_text_1",
+          "duration": 0.3
+        },
+        {
+          "anim_id": "show_step_text_2",
+          "type": "show_text",
+          "target": "step_text_2",
+          "params": {
+            "text": "步骤2：代入n=100",
+            "position": [
+              3.5,
+              -3.0,
+              0
+            ],
+            "font_size": 24,
+            "color": "#FFD700"
+          },
+          "duration": 0.6
+        },
+        {
+          "anim_id": "transform_formula",
+          "type": "show_math",
+          "target": "formula_2",
+          "params": {
+            "latex": "S_{100} = \\frac{100 \\times 101}{2}",
+            "position": [
+              3.5,
+              2.0,
+              0
+            ],
+            "font_size": 32,
+            "color": "#FFFFFF"
+          },
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "phase_id": "step_3",
+      "type": "solution_steps",
+      "audio": {
+        "text": "步骤三：计算得出最终结果"
+      },
+      "animations": [
+        {
+          "anim_id": "fade_out_step_2",
+          "type": "fade_out",
+          "target": "step_text_2",
+          "duration": 0.3
+        },
+        {
+          "anim_id": "show_step_text_3",
+          "type": "show_text",
+          "target": "step_text_3",
+          "params": {
+            "text": "步骤3：计算结果",
+            "position": [
+              3.5,
+              -3.0,
+              0
+            ],
+            "font_size": 24,
+            "color": "#FFD700"
+          },
+          "duration": 0.6
+        },
+        {
+          "anim_id": "show_calculation",
+          "type": "show_math",
+          "target": "formula_3",
+          "params": {
+            "latex": "S_{100} = \\frac{10100}{2} = 5050",
+            "position": [
+              3.5,
+              2.0,
+              0
+            ],
+            "font_size": 32,
+            "color": "#FFFFFF"
+          },
+          "duration": 1.5
+        }
+      ]
+    },
+    {
+      "phase_id": "final_answer",
+      "type": "final_answer",
+      "animations": [
+        {
+          "anim_id": "show_answer",
+          "type": "show_text",
+          "target": "answer_box",
+          "params": {
+            "text": "答案：5050",
+            "position": [
+              -3.5,
+              -3.2,
+              0
+            ],
+            "font_size": 40,
+            "color": "#FFD700",
+            "box": true
+          },
+          "duration": 1.0
+        }
+      ]
+    }
+  ]
+}
