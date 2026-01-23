@@ -80,7 +80,7 @@
         {
           "anim_id": "highlight_problem",
           "type": "highlight",
-          "target": "problem_left",
+          "target": "problem_center",
           "params": {
             "color": "#FFD700",
             "stroke_width": 4
