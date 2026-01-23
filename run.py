@@ -419,10 +419,12 @@ class SolutionVideo{question_number}(Scene):
 ✅ 填充 problem_data, steps_data, final_answer_text 数据
 
 ## 不要做的事情：
-❌ 不要重写 show_cover_phase() 方法
-❌ 不要修改 play_rolling_step_text() 的实现
-❌ 不要更改辅助方法的返回值类型
-❌ 不要在辅助方法中使用 VGroup 包含 ImageMobject
+❌ 不要重写 show_cover_phase() 方法 - 会导致严重的运行时错误
+❌ 不要修改 play_rolling_step_text() 的实现 - 会破坏音频同步
+❌ 不要更改辅助方法的返回值类型 - 会导致类型错误
+❌ 🚨 严禁在任何地方使用 VGroup 包含 ImageMobject - 会导致 TypeError
+   - ImageMobject 不是 VMobject，只能使用 Group()
+   - 模板中的辅助方法已正确使用 Group()，请勿修改
 
 ---
 
@@ -513,6 +515,79 @@ def ensure_complete_manim_code(python_code: str, template_code: str) -> str:
         return python_code
 
 
+def validate_and_fix_vgroup_usage(python_code: str) -> str:
+    """
+    验证并修复 VGroup 与 ImageMobject 的兼容性问题
+
+    问题：VGroup 只能包含 VMobject 类型，但 ImageMobject 不是 VMobject
+    解决方案：自动将 VGroup() 替换为 Group()，在涉及 ImageMobject 的上下文中
+
+    Args:
+        python_code: 生成的 Python 代码
+
+    Returns:
+        修复后的代码
+    """
+    if not python_code:
+        return python_code
+
+    # 检测问题模式：VGroup 包含可能的 ImageMobject
+    # 模式1: VGroup(logo_img, cover_img, ...) - 明显包含图片对象
+    # 模式2: VGroup() 在包含 ImageMobject 的方法中
+
+    issues_found = []
+
+    # 模式1: 检测 VGroup 中包含明显的图片变量名
+    image_vgroup_pattern = r'VGroup\([^)]*(?:img|image|logo|cover|photo|picture)[^)]*\)'
+    matches = re.finditer(image_vgroup_pattern, python_code, re.IGNORECASE)
+    for match in matches:
+        issues_found.append(match.group(0))
+
+    # 模式2: 在 show_cover_phase 等方法中检测 VGroup()
+    helper_methods = ['show_cover_phase', 'transition_to_solution_phase']
+    for method_name in helper_methods:
+        method_pattern = rf'def {method_name}\(self.*?\):(.*?)(?=\n    def |\Z)'
+        method_match = re.search(method_pattern, python_code, re.DOTALL)
+        if method_match:
+            method_body = method_match.group(1)
+            if 'VGroup(' in method_body:
+                issues_found.append(f"VGroup in {method_name}()")
+
+    if issues_found:
+        print(f"  ⚠️  检测到 {len(issues_found)} 个 VGroup 兼容性问题")
+        print(f"  🔧 正在自动修复：将涉及 ImageMobject 的 VGroup 替换为 Group...")
+
+        # 修复策略：在辅助方法中将 VGroup() 替换为 Group()
+        for method_name in helper_methods:
+            method_pattern = rf'(def {method_name}\(self.*?\):.*?)(?=\n    def |\Z)'
+            def replace_vgroup_in_method(match):
+                method_code = match.group(1)
+                # 替换 VGroup() 为 Group()
+                fixed_code = method_code.replace('VGroup()', 'Group()')
+                # 替换包含图片变量的 VGroup(...) 为 Group(...)
+                fixed_code = re.sub(
+                    r'VGroup\(([^)]*(?:img|image|logo|cover|photo|picture)[^)]*)\)',
+                    r'Group(\1)',
+                    fixed_code,
+                    flags=re.IGNORECASE
+                )
+                return fixed_code
+
+            python_code = re.sub(method_pattern, replace_vgroup_in_method, python_code, flags=re.DOTALL)
+
+        # 全局替换：任何包含图片变量名的 VGroup
+        python_code = re.sub(
+            r'VGroup\(([^)]*(?:img|image|logo|cover|photo|picture)[^)]*)\)',
+            r'Group(\1)',
+            python_code,
+            flags=re.IGNORECASE
+        )
+
+        print(f"  ✓ VGroup 兼容性问题已修复")
+
+    return python_code
+
+
 def parse_response(response: str, template_code: str = "") -> tuple[str, str]:
     """
     解析Claude响应，分离Markdown解题步骤和Python代码（移除HTML以减少复杂度）
@@ -546,6 +621,10 @@ def parse_response(response: str, template_code: str = "") -> tuple[str, str]:
     # 确保代码完整（包含所有辅助方法）
     if python_code and template_code:
         python_code = ensure_complete_manim_code(python_code, template_code)
+
+    # 验证并修复 VGroup 兼容性问题
+    if python_code:
+        python_code = validate_and_fix_vgroup_usage(python_code)
 
     # Markdown内容就是完整响应
     # （包含代码块，便于查看完整解题过程）
